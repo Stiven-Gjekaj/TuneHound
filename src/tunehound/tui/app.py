@@ -55,11 +55,14 @@ class TuneHoundApp(App[None]):
                 "Paste a Spotify link or type a search above, then press Enter.",
                 id="empty",
             )
+        # The status line tells how many items wait in the queue.
+        yield Static(id="status")
         yield Footer()
 
     def on_mount(self) -> None:
         table = self.query_one("#queue", DataTable)
         table.add_columns("Title", "Artist", "Source", "Status")
+        self.update_status()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         link = event.value.strip()
@@ -76,3 +79,15 @@ class TuneHoundApp(App[None]):
         # fills them in later. The link itself stands in for the title.
         table.add_row(link, "", source_of(link), "waiting", key=link)
         self.query_one("#empty", Static).display = False
+        self.update_status()
+
+    def update_status(self) -> None:
+        """Write the count of the queue to the status line."""
+        count = self.query_one("#queue", DataTable).row_count
+        if count == 0:
+            text = "Ready. The queue is empty."
+        elif count == 1:
+            text = "1 item in the queue, 1 waiting."
+        else:
+            text = f"{count} items in the queue, {count} waiting."
+        self.query_one("#status", Static).update(text)

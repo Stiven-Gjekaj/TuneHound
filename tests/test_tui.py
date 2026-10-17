@@ -50,6 +50,7 @@ async def test_queue_starts_empty_with_the_empty_state():
         empty = app.query_one("#empty", Static)
         assert empty.display
         assert "queue is empty" in str(empty.render())
+        assert "empty" in str(app.query_one("#status", Static).render())
 
 
 async def test_submit_posts_the_message_and_adds_a_waiting_row():
@@ -62,6 +63,8 @@ async def test_submit_posts_the_message_and_adds_a_waiting_row():
         assert rows_of(app) == [[LINK, "", "spotify.com", "waiting"]]
         assert not app.query_one("#empty", Static).display
         assert app.query_one("#link", Input).value == ""
+        status = str(app.query_one("#status", Static).render())
+        assert status == "1 item in the queue, 1 waiting."
 
 
 async def test_empty_submit_adds_nothing():
