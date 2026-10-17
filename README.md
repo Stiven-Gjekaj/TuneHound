@@ -35,10 +35,12 @@ _Paste a link. TuneHound finds the song, downloads it, and tags it._
 ## Overview
 
 TuneHound downloads music from many providers.
-It reads the metadata of a song from the provider.
+It reads the metadata of a song from Spotify, Deezer, or Apple Music.
 It finds the same song on YouTube and downloads it with yt-dlp.
 Then it converts the audio to mp3 with ffmpeg and writes the tags and the
 cover.
+A YouTube, SoundCloud, or Bandcamp link already points at the audio, so
+TuneHound downloads it as it is.
 
 TuneHound does not decrypt DRM streams.
 
@@ -73,6 +75,15 @@ that fails does not stop the other songs. When the file of a song is already
 in the folder, TuneHound skips the song, so you can run the same command
 again to get the songs that failed.
 
+The same command takes links of other providers, and plain search text:
+
+    uv run tunehound download https://www.deezer.com/album/1416578
+    uv run tunehound download "https://music.apple.com/us/album/3-originals/1559523357?i=1559523359"
+    uv run tunehound download https://soundcloud.com/artist/song
+    uv run tunehound download "rick astley never gonna give you up"
+
+TuneHound finds a search text on Deezer and takes the first song.
+
 Put the files in a different folder:
 
     uv run tunehound download LINK -o ~/Music
@@ -99,14 +110,23 @@ queue to close the app.
 
 ## What works now
 
-- Providers: Spotify track, album, and playlist links. Other providers come
-  later.
-- Lists: the Spotify embed page gave 100 songs at most for a playlist in a
-  test. TuneHound warns when a list has 100 songs, because songs can be
-  missing.
+| Link | Track | Album | Playlist | Match step |
+| --- | --- | --- | --- | --- |
+| Spotify | yes | yes | yes | yes |
+| Deezer | yes | yes | yes | yes |
+| Apple Music | yes | yes | no | yes |
+| Search text | yes | no | no | yes |
+| YouTube and YouTube Music | yes | no | yes | no |
+| SoundCloud | yes | no | yes | no |
+| Bandcamp | yes | yes | no | no |
+
 - Tags: the title, the artists, the release date, the cover, and the link of
-  the source. A song from an album link also gets the album and the track
-  number. The Spotify embed page does not give the ISRC.
+  the source. Deezer and Apple Music also give the album, the track number,
+  and the disc number, and Deezer gives the ISRC. A Spotify song from an
+  album link gets the album and the track number.
+- Lists: the Spotify embed page gave 100 songs at most for a playlist in a
+  test. TuneHound warns when a Spotify playlist has 100 songs, because songs
+  can be missing.
 - Format: mp3.
 - Match: TuneHound searches YouTube and scores each result by the title, the
   artist, the length, and the channel. It refuses a live version, a remix, or
@@ -115,5 +135,4 @@ queue to close the app.
 
 ## Test
 
-    uv run pytest
-    uv run ruff check .
+    scripts/check.sh
