@@ -1,0 +1,71 @@
+/* The palette of the banner. See assets/palette.md. */
+$th-panel: #070b14;
+$th-panel-2: #0f172a;
+$th-border: #1e3a4a;
+$th-cyan: #22d3ee;
+$th-blue: #60a5fa;
+$th-violet: #a78bfa;
+$th-pink: #f472b6;
+$th-pale: #e0e7ff;
+$th-dim: #64748b;
+
+Screen {
+    background: $th-panel;
+    color: $th-pale;
+}
+
+/* The header is one line. The wordmark sits at the left, the tagline at the
+   right. */
+#header {
+    height: 3;
+    background: $th-panel-2;
+    border-bottom: solid $th-border;
+    padding: 0 2;
+}
+
+#wordmark {
+    width: auto;
+    content-align: left middle;
+    height: 100%;
+}
+
+#tagline {
+    width: 1fr;
+    height: 100%;
+    content-align: right middle;
+    color: $th-dim;
+}
+
+#link {
+    margin: 1 2 0 2;
+    background: $th-panel-2;
+    border: tall $th-border;
+    color: $th-pale;
+}
+
+#link:focus {
+    border: tall $th-cyan;
+}
+
+#link > .input--placeholder {
+    color: $th-dim;
+}
+
+#link > .input--cursor {
+    background: $th-pink;
+    color: $th-panel;
+}
+
+Footer {
+    background: $th-panel-2;
+    color: $th-dim;
+}
+
+Footer > .footer--key {
+    background: $th-border;
+    color: $th-cyan;
+}
+
+Footer > .footer--description {
+    color: $th-pale;
+}
