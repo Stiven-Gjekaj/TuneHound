@@ -29,3 +29,7 @@ def test_find_provider_knows_spotify_by_default():
 
 def test_find_provider_knows_deezer_by_default():
     assert find_provider("https://www.deezer.com/track/1").name == "deezer"
+
+
+def test_find_provider_knows_apple_music_by_default():
+    assert find_provider("https://music.apple.com/us/song/1").name == "apple"

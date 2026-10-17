@@ -1,10 +1,15 @@
 """The providers that give the metadata of a song."""
 
+from tunehound.providers.apple import AppleMusicProvider
 from tunehound.providers.base import Provider, ProviderError, TrackList
 from tunehound.providers.deezer import DeezerProvider
 from tunehound.providers.spotify import SpotifyProvider
 
-PROVIDERS: tuple[Provider, ...] = (SpotifyProvider(), DeezerProvider())
+PROVIDERS: tuple[Provider, ...] = (
+    SpotifyProvider(),
+    DeezerProvider(),
+    AppleMusicProvider(),
+)
 
 __all__ = ["PROVIDERS", "Provider", "ProviderError", "TrackList", "find_provider"]
 
