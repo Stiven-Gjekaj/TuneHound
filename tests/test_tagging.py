@@ -48,6 +48,16 @@ def make_silent(tmp_path, suffix, codec_args):
 
 
 @pytest.fixture
+def silent_flac(tmp_path):
+    return make_silent(tmp_path, ".flac", ["-c:a", "flac"])
+
+
+@pytest.fixture
+def silent_opus(tmp_path):
+    return make_silent(tmp_path, ".opus", ["-c:a", "libopus"])
+
+
+@pytest.fixture
 def silent_m4a(tmp_path):
     return make_silent(tmp_path, ".m4a", ["-c:a", "aac"])
 
@@ -154,3 +164,42 @@ def test_write_tags_keeps_the_m4a_audio_playable(silent_m4a):
 
     write_tags(silent_m4a, TRACK, cover=JPEG)
     assert MP4(silent_m4a).info.length == pytest.approx(1.0, abs=0.1)
+
+
+def check_vorbis_fields(tags):
+    assert tags["title"] == ["A Song"]
+    assert tags["artist"] == ["First", "Second"]
+    assert tags["albumartist"] == ["First"]
+    assert tags["album"] == ["An Album"]
+    assert tags["date"] == ["1987-11-12"]
+    assert tags["tracknumber"] == ["7"]
+    assert tags["discnumber"] == ["2"]
+    assert tags["isrc"] == ["GBARL9300135"]
+    assert tags["website"] == [TRACK.source_url]
+
+
+def test_write_tags_writes_the_metadata_into_flac(silent_flac):
+    from mutagen.flac import FLAC
+
+    write_tags(silent_flac, TRACK, cover=JPEG)
+    write_tags(silent_flac, TRACK, cover=PNG)
+    audio = FLAC(silent_flac)
+    check_vorbis_fields(audio)
+    [picture] = audio.pictures
+    assert (picture.mime, picture.type, picture.data) == ("image/png", 3, PNG)
+    assert audio.info.length == pytest.approx(1.0, abs=0.1)
+
+
+def test_write_tags_writes_the_metadata_into_opus(silent_opus):
+    import base64
+
+    from mutagen.flac import Picture
+    from mutagen.oggopus import OggOpus
+
+    write_tags(silent_opus, TRACK, cover=JPEG)
+    audio = OggOpus(silent_opus)
+    check_vorbis_fields(audio)
+    [block] = audio["metadata_block_picture"]
+    picture = Picture(base64.b64decode(block))
+    assert (picture.mime, picture.type, picture.data) == ("image/jpeg", 3, JPEG)
+    assert audio.info.length == pytest.approx(1.0, abs=0.1)

@@ -1,7 +1,9 @@
 """Write the metadata of a track into an audio file."""
 
+import base64
 from pathlib import Path
 
+from mutagen.flac import FLAC, Picture
 from mutagen.id3 import (
     APIC,
     ID3,
@@ -17,6 +19,7 @@ from mutagen.id3 import (
     ID3NoHeaderError,
 )
 from mutagen.mp4 import MP4, MP4Cover, MP4FreeForm
+from mutagen.oggopus import OggOpus
 
 from tunehound.track import Track
 
@@ -95,7 +98,62 @@ def _write_mp4(path: Path, track: Track, cover: bytes | None) -> None:
     audio.save()
 
 
-_WRITERS = {".mp3": _write_id3, ".m4a": _write_mp4}
+def _vorbis_fields(track: Track) -> dict[str, list[str]]:
+    fields = {
+        "title": [track.title],
+        "artist": list(track.artists),
+        "albumartist": [track.artists[0]],
+        "website": [track.source_url],
+    }
+    if track.album:
+        fields["album"] = [track.album]
+    if track.release_date:
+        fields["date"] = [track.release_date]
+    if track.track_number:
+        fields["tracknumber"] = [str(track.track_number)]
+    if track.disc_number:
+        fields["discnumber"] = [str(track.disc_number)]
+    if track.isrc:
+        fields["isrc"] = [track.isrc]
+    return fields
+
+
+def _picture(cover: bytes) -> Picture:
+    picture = Picture()
+    picture.type = 3
+    picture.mime = image_mime(cover)
+    picture.desc = "Cover"
+    picture.data = cover
+    return picture
+
+
+def _write_flac(path: Path, track: Track, cover: bytes | None) -> None:
+    audio = FLAC(path)
+    for key, values in _vorbis_fields(track).items():
+        audio[key] = values
+    if cover is not None:
+        audio.clear_pictures()
+        audio.add_picture(_picture(cover))
+    audio.save()
+
+
+def _write_opus(path: Path, track: Track, cover: bytes | None) -> None:
+    audio = OggOpus(path)
+    for key, values in _vorbis_fields(track).items():
+        audio[key] = values
+    if cover is not None:
+        # Ogg files keep the cover as a FLAC picture block in base64.
+        block = base64.b64encode(_picture(cover).write()).decode("ascii")
+        audio["metadata_block_picture"] = [block]
+    audio.save()
+
+
+_WRITERS = {
+    ".mp3": _write_id3,
+    ".m4a": _write_mp4,
+    ".flac": _write_flac,
+    ".opus": _write_opus,
+}
 
 
 def write_tags(path: Path, track: Track, cover: bytes | None = None) -> None:
