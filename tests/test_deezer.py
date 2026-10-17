@@ -17,6 +17,7 @@ def make_track(**changes):
         "title": "A Song",
         "duration": 211,
         "track_position": 3,
+        "disk_number": 2,
         "release_date": "2004-01-12",
         "isrc": "GBXXX0000001",
         "explicit_lyrics": True,
@@ -55,6 +56,7 @@ def test_parse_track_reads_all_fields():
     assert track.duration_ms == 211000
     assert track.album == "An Album"
     assert track.track_number == 3
+    assert track.disc_number == 2
     assert track.release_date == "2004-01-12"
     assert track.isrc == "GBXXX0000001"
     assert track.cover_url == "https://img.invalid/1000"

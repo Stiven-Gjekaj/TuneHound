@@ -61,6 +61,7 @@ def parse_track(data: dict) -> Track:
         source_url=TRACK_URL.format(id=data["id"]),
         album=album.get("title") or None,
         track_number=data.get("track_position") or None,
+        disc_number=data.get("disk_number") or None,
         release_date=data.get("release_date") or album.get("release_date") or None,
         isrc=data.get("isrc") or None,
         cover_url=album.get("cover_xl") or album.get("cover_big") or None,
