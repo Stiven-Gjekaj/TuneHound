@@ -117,7 +117,7 @@ def test_summarize_says_song_for_one_song():
 
 def test_download_command_refuses_a_bad_link(capsys):
     assert main(["download", "https://example.com/not-spotify"]) == 1
-    assert "not a Spotify link" in capsys.readouterr().err
+    assert "does not know this link" in capsys.readouterr().err
 
 
 def test_download_command_warns_about_a_list_that_can_be_cut(monkeypatch, capsys):
@@ -127,7 +127,7 @@ def test_download_command_warns_about_a_list_that_can_be_cut(monkeypatch, capsys
     def download_link(
         link, output, cookies_from_browser=None, on_outcome=None, on_list=None
     ):
-        on_list(TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(100))))
+        on_list(TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(100)), 100))
         return []
 
     monkeypatch.setattr(pipeline, "download_link", download_link)

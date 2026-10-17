@@ -210,7 +210,23 @@ def test_fetch_list_refuses_a_track_link():
 
 
 def test_track_list_tells_when_the_list_can_be_cut():
-    full = TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(100)))
-    short = TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(99)))
+    full = TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(100)), 100)
+    short = TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(99)), 100)
     assert full.maybe_cut is True
     assert short.maybe_cut is False
+
+
+def test_parse_embed_list_sets_the_cut_limit_only_for_a_playlist():
+    playlist = parse_embed_list(make_page(make_list_entity("playlist", [])), "playlist")
+    album = parse_embed_list(make_page(make_list_entity("album", [])), "album")
+    assert playlist.cut_limit == 100
+    assert album.cut_limit is None
+
+
+def test_spotify_provider_owns_only_spotify_links():
+    from tunehound.providers.spotify import SpotifyProvider
+
+    provider = SpotifyProvider()
+    assert provider.owns(f"https://open.spotify.com/album/{TRACK_ID}")
+    assert provider.kind_of(f"spotify:playlist:{TRACK_ID}") == "playlist"
+    assert not provider.owns("https://www.deezer.com/track/1")

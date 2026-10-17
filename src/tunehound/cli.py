@@ -73,7 +73,7 @@ def summarize(outcomes) -> str:
 def run_download(link: str, output: Path, cookies_from_browser: str | None) -> int:
     """Download the songs of a link and print what happened to each."""
     from tunehound import pipeline
-    from tunehound.providers.spotify import SpotifyError
+    from tunehound.providers import ProviderError
 
     try:
         outcomes = pipeline.download_link(
@@ -83,7 +83,7 @@ def run_download(link: str, output: Path, cookies_from_browser: str | None) -> i
             on_outcome=_print_outcome,
             on_list=_print_list,
         )
-    except (SpotifyError, OSError) as error:
+    except (ProviderError, OSError) as error:
         print(f"tunehound: {error}", file=sys.stderr)
         return 1
     print(summarize(outcomes))

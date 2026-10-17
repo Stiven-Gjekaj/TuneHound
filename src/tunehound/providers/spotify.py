@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from tunehound import http
+from tunehound.providers.base import ProviderError, TrackList
 from tunehound.track import Track
 
 _ID = r"[0-9A-Za-z]{22}"
@@ -31,7 +32,7 @@ TRACK_URL = "https://open.spotify.com/track/{id}"
 EMBED_LIST_LIMIT = 100
 
 
-class SpotifyError(Exception):
+class SpotifyError(ProviderError):
     """Tell that a Spotify link or page is not usable."""
 
 
@@ -59,25 +60,6 @@ def parse_track_id(link: str) -> str:
     if parsed.kind != "track":
         raise SpotifyError(f"not a Spotify track link: {link.strip()}")
     return parsed.id
-
-
-@dataclass(frozen=True)
-class TrackList:
-    """Hold the songs of a Spotify album or playlist."""
-
-    kind: str
-    name: str
-    track_links: tuple[str, ...]
-
-    @property
-    def album(self) -> str | None:
-        """Return the album name for an album, and None for a playlist."""
-        return self.name if self.kind == "album" else None
-
-    @property
-    def maybe_cut(self) -> bool:
-        """Tell if the embed page can have cut the list."""
-        return len(self.track_links) >= EMBED_LIST_LIMIT
 
 
 def _read_entity(page: str, kind: str) -> dict:
@@ -137,7 +119,12 @@ def parse_embed_list(page: str, kind: str) -> TrackList:
         match = _URI_PATTERN.match(uri)
         if match and match.group("kind") == "track":
             links.append(TRACK_URL.format(id=match.group("id")))
-    return TrackList(kind=kind, name=entity.get("name") or "", track_links=tuple(links))
+    return TrackList(
+        kind=kind,
+        name=entity.get("name") or "",
+        track_links=tuple(links),
+        cut_limit=EMBED_LIST_LIMIT if kind == "playlist" else None,
+    )
 
 
 def fetch_list(link: str, get_text: Callable[[str], str] = http.get_text) -> TrackList:
@@ -147,3 +134,25 @@ def fetch_list(link: str, get_text: Callable[[str], str] = http.get_text) -> Tra
         raise SpotifyError(f"not a Spotify album or playlist link: {link.strip()}")
     page = get_text(EMBED_URL.format(kind=parsed.kind, id=parsed.id))
     return parse_embed_list(page, parsed.kind)
+
+
+class SpotifyProvider:
+    """Read songs from Spotify links."""
+
+    name = "spotify"
+
+    def owns(self, link: str) -> bool:
+        try:
+            parse_link(link)
+        except SpotifyError:
+            return False
+        return True
+
+    def kind_of(self, link: str) -> str:
+        return parse_link(link).kind
+
+    def fetch_track(self, link: str) -> Track:
+        return fetch_track(link)
+
+    def fetch_list(self, link: str) -> TrackList:
+        return fetch_list(link)

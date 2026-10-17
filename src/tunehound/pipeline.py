@@ -9,8 +9,7 @@ from pathlib import Path
 from tunehound import http
 from tunehound.download import DownloadError, download_audio
 from tunehound.matching import Candidate, best_match
-from tunehound.providers import spotify
-from tunehound.providers.spotify import SpotifyError, fetch_track
+from tunehound.providers import Provider, ProviderError, TrackList, find_provider
 from tunehound.search import search_youtube
 from tunehound.tagging import TaggingError, write_tags
 from tunehound.track import Track
@@ -52,7 +51,7 @@ def download_track(
     link: str,
     output_dir: Path,
     cookies_from_browser: str | None = None,
-    fetch: Callable[[str], Track] = fetch_track,
+    fetch: Callable[[str], Track] | None = None,
     search: Callable[[Track], list[Candidate]] = search_youtube,
     download: Callable[..., Path] = download_audio,
     get_bytes: Callable[[str], bytes] = http.get_bytes,
@@ -65,6 +64,8 @@ def download_track(
     When the audio file of the track is already in the folder, do not
     search or download again.
     """
+    if fetch is None:
+        fetch = find_provider(link).fetch_track
     track = fetch(link)
     if album:
         track = dataclasses.replace(track, album=album)
@@ -82,7 +83,7 @@ def download_track(
     return Result(track=track, match=match, path=path)
 
 
-SONG_ERRORS = (SpotifyError, NoMatchError, DownloadError, TaggingError, OSError)
+SONG_ERRORS = (ProviderError, NoMatchError, DownloadError, TaggingError, OSError)
 
 
 @dataclass(frozen=True)
@@ -109,8 +110,8 @@ def download_link(
     output_dir: Path,
     cookies_from_browser: str | None = None,
     on_outcome: OutcomeHook | None = None,
-    on_list: Callable[[spotify.TrackList], None] | None = None,
-    fetch_list: Callable[[str], spotify.TrackList] = spotify.fetch_list,
+    on_list: Callable[[TrackList], None] | None = None,
+    find: Callable[[str], Provider] = find_provider,
     download_song: Callable[..., Result] = download_track,
 ) -> list[Outcome]:
     """Download the song of a track link, or each song of a list link.
@@ -118,11 +119,11 @@ def download_link(
     A song that fails does not stop the other songs. `on_outcome` gets the
     number of the song, the count of songs, and the outcome, after each song.
     """
-    kind = spotify.parse_link(link).kind
-    if kind == "track":
+    provider = find(link)
+    if provider.kind_of(link) == "track":
         songs = [(link, None, None)]
     else:
-        track_list = fetch_list(link)
+        track_list = provider.fetch_list(link)
         if on_list is not None:
             on_list(track_list)
         songs = [
@@ -137,6 +138,7 @@ def download_link(
                 song_link,
                 output_dir,
                 cookies_from_browser=cookies_from_browser,
+                fetch=provider.fetch_track,
                 album=album,
                 track_number=number,
             )

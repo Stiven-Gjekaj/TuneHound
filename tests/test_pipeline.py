@@ -11,7 +11,7 @@ from tunehound.pipeline import (
     download_track,
     safe_filename,
 )
-from tunehound.providers.spotify import TrackList
+from tunehound.providers import TrackList
 from tunehound.track import Track
 
 TRACK = Track(
@@ -131,7 +131,12 @@ def fake_song_downloader(fail_links=()):
     calls = []
 
     def download_song(
-        link, output_dir, cookies_from_browser=None, album=None, track_number=None
+        link,
+        output_dir,
+        cookies_from_browser=None,
+        fetch=None,
+        album=None,
+        track_number=None,
     ):
         calls.append((link, album, track_number, cookies_from_browser))
         if link in fail_links:
@@ -142,9 +147,34 @@ def fake_song_downloader(fail_links=()):
     return download_song, calls
 
 
+class FakeProvider:
+    name = "fake"
+
+    def __init__(self, track_list=None):
+        self.track_list = track_list
+
+    def owns(self, link):
+        return True
+
+    def kind_of(self, link):
+        return "track" if self.track_list is None else self.track_list.kind
+
+    def fetch_track(self, link):
+        return TRACK
+
+    def fetch_list(self, link):
+        return self.track_list
+
+
+def fake_find(track_list=None):
+    return lambda link: FakeProvider(track_list)
+
+
 def test_download_link_downloads_one_track(tmp_path):
     download_song, calls = fake_song_downloader()
-    outcomes = download_link(TRACK_LINK, tmp_path, download_song=download_song)
+    outcomes = download_link(
+        TRACK_LINK, tmp_path, find=fake_find(), download_song=download_song
+    )
     assert calls == [(TRACK_LINK, None, None, None)]
     assert [o.status for o in outcomes] == ["downloaded"]
 
@@ -156,7 +186,7 @@ def test_download_link_numbers_the_songs_of_an_album(tmp_path):
         ALBUM_LINK,
         tmp_path,
         cookies_from_browser="firefox",
-        fetch_list=lambda link: album,
+        find=fake_find(album),
         download_song=download_song,
     )
     assert calls == [
@@ -171,7 +201,7 @@ def test_download_link_gives_no_album_for_a_playlist(tmp_path):
     download_link(
         PLAYLIST_LINK,
         tmp_path,
-        fetch_list=lambda link: playlist,
+        find=fake_find(playlist),
         download_song=download_song,
     )
     assert [(album, number) for _, album, number, _ in calls] == [
@@ -190,7 +220,7 @@ def test_download_link_continues_after_a_failed_song(tmp_path):
         on_outcome=lambda index, total, outcome: seen.append(
             (index, total, outcome.status)
         ),
-        fetch_list=lambda link: playlist,
+        find=fake_find(playlist),
         download_song=download_song,
     )
     assert [o.status for o in outcomes] == ["downloaded", "failed", "downloaded"]
@@ -212,7 +242,7 @@ def test_download_link_gives_the_list_to_the_hook(tmp_path):
         PLAYLIST_LINK,
         tmp_path,
         on_list=seen.append,
-        fetch_list=lambda link: playlist,
+        find=fake_find(playlist),
         download_song=download_song,
     )
     assert seen == [playlist]
