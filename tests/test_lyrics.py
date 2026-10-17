@@ -54,3 +54,7 @@ def test_fetch_lyrics_raises_other_http_errors():
 
     with pytest.raises(urllib.error.HTTPError):
         fetch_lyrics(TRACK, get_json)
+
+
+def test_fetch_lyrics_gives_none_for_a_stub():
+    assert fetch_lyrics(TRACK, lambda url: {"plainLyrics": "x y z"}) is None

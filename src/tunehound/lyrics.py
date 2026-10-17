@@ -14,6 +14,10 @@ from tunehound.track import Track
 
 API = "https://lrclib.net/api/get"
 
+# In a test, lrclib.net gave 5 characters of plain lyrics for a full song.
+# A text this short is a stub, not lyrics, so TuneHound does not write it.
+MIN_LENGTH = 20
+
 
 def lyrics_url(track: Track) -> str:
     """Return the lrclib.net request for a track."""
@@ -40,4 +44,4 @@ def fetch_lyrics(
     if not isinstance(answer, dict) or answer.get("instrumental"):
         return None
     text = (answer.get("plainLyrics") or "").strip()
-    return text or None
+    return text if len(text) >= MIN_LENGTH else None
