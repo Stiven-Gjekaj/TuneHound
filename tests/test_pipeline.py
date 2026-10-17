@@ -10,7 +10,6 @@ from tunehound.pipeline import (
     Result,
     download_link,
     download_track,
-    safe_filename,
 )
 from tunehound.providers import TrackList
 from tunehound.track import Track
@@ -24,21 +23,6 @@ TRACK = Track(
 )
 GOOD = Candidate("good", "First - Song: Part 1/2", "First - Topic", 200.0, "youtube")
 BAD = Candidate("bad", "Other Thing", "Someone", 200.0, "youtube")
-
-
-@pytest.mark.parametrize(
-    ("text", "name"),
-    [
-        ("AC/DC - Back In Black", "AC_DC - Back In Black"),
-        ('What? "Yes" <No> | a*b \\ c:d', "What_ _Yes_ _No_ _ a_b _ c_d"),
-        ("  lots   of\tspace  ", "lots of space"),
-        ("ends with dots...", "ends with dots"),
-        ("...", "track"),
-        ("a" * 300, "a" * 200),
-    ],
-)
-def test_safe_filename_removes_unsafe_characters(text, name):
-    assert safe_filename(text) == name
 
 
 def make_steps(candidates, cover=b"\xff\xd8\xffcover", cover_error=None):
@@ -139,13 +123,9 @@ def fake_song_downloader(fail_links=()):
         link,
         output_dir,
         cookies_from_browser=None,
-        fetch=None,
-        direct=False,
-        codec="mp3",
-        lyrics=False,
-        progress=None,
         album=None,
         track_number=None,
+        **options,
     ):
         calls.append((link, album, track_number, cookies_from_browser))
         if link in fail_links:
@@ -432,3 +412,23 @@ def test_download_link_reports_the_start_and_the_progress_of_each_song(tmp_path)
         ("start", 2, 2, "s2"),
         ("progress", 2, 0.5),
     ]
+
+
+def test_download_track_uses_the_file_name_template(tmp_path):
+    steps, calls = make_steps([GOOD])
+    result = download_track("link", tmp_path, template="{artist}/{title}", **steps)
+    assert calls["download"][1] == tmp_path / "First" / "Song_ Part 1_2"
+    assert result.path == tmp_path / "First" / "Song_ Part 1_2.mp3"
+
+
+def test_download_link_passes_the_template(tmp_path):
+    seen = []
+
+    def download_song(link, output_dir, **options):
+        seen.append(options["template"])
+        return Result(track=TRACK, match=None, path=output_dir / "x.mp3")
+
+    download_link(
+        "x", tmp_path, template="{title}", find=fake_find(), download_song=download_song
+    )
+    assert seen == ["{title}"]

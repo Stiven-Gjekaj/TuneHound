@@ -1,7 +1,6 @@
 """Turn a provider link into a tagged audio file."""
 
 import dataclasses
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,13 +10,11 @@ from tunehound.download import DEFAULT_CODEC, DownloadError, download_audio
 from tunehound.enrich import enrich
 from tunehound.lyrics import fetch_lyrics
 from tunehound.matching import Candidate, best_match
+from tunehound.naming import DEFAULT_TEMPLATE, render
 from tunehound.providers import Provider, ProviderError, TrackList, find_provider
 from tunehound.search import search_youtube
 from tunehound.tagging import TaggingError, image_mime, write_tags
 from tunehound.track import Track
-
-MAX_FILENAME_LENGTH = 200
-_UNSAFE = re.compile(r'[\x00-\x1f<>:"/\\|?*]')
 
 
 class NoMatchError(Exception):
@@ -32,12 +29,6 @@ class Result:
     match: Candidate | None
     path: Path
     skipped: bool = False
-
-
-def safe_filename(text: str) -> str:
-    """Make text safe to use as a file name on Windows, macOS, and Linux."""
-    name = _UNSAFE.sub("_", " ".join(text.split())).strip(" .")
-    return name[:MAX_FILENAME_LENGTH].rstrip(" .") or "track"
 
 
 def _fetch_cover(url: str | None, get_bytes: Callable[[str], bytes]) -> bytes | None:
@@ -96,6 +87,7 @@ def download_track(
     lyrics: bool = False,
     find_lyrics: Callable[[Track], str | None] = fetch_lyrics,
     progress: Callable[[float], None] | None = None,
+    template: str = DEFAULT_TEMPLATE,
 ) -> Result:
     """Read the track of a link, find it, download it, and tag it.
 
@@ -112,7 +104,7 @@ def download_track(
         track = dataclasses.replace(track, track_number=track_number)
     if not direct:
         track = fill(track)
-    stem = output_dir / safe_filename(f"{track.artist} - {track.title}")
+    stem = output_dir / render(template, track)
     existing = stem.with_name(f"{stem.name}.{codec}")
     if existing.is_file():
         return Result(track=track, match=None, path=existing, skipped=True)
@@ -172,6 +164,7 @@ def download_link(
     cookies_from_browser: str | None = None,
     codec: str = DEFAULT_CODEC,
     lyrics: bool = False,
+    template: str = DEFAULT_TEMPLATE,
     on_outcome: OutcomeHook | None = None,
     on_list: Callable[[TrackList], None] | None = None,
     on_start: StartHook | None = None,
@@ -213,6 +206,7 @@ def download_link(
                 codec=codec,
                 lyrics=lyrics,
                 progress=progress,
+                template=template,
                 album=album,
                 track_number=number,
             )
