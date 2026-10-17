@@ -50,9 +50,10 @@ def make_steps(candidates, cover=b"\xff\xd8\xffcover", cover_error=None):
     def search(track):
         return candidates
 
-    def download(url, stem, cookies_from_browser=None):
+    def download(url, stem, codec="mp3", cookies_from_browser=None):
         calls["download"] = (url, stem, cookies_from_browser)
-        return stem.with_name(stem.name + ".mp3")
+        calls["codec"] = codec
+        return stem.with_name(f"{stem.name}.{codec}")
 
     def get_bytes(url):
         calls["cover_url"] = url
@@ -136,6 +137,7 @@ def fake_song_downloader(fail_links=()):
         cookies_from_browser=None,
         fetch=None,
         direct=False,
+        codec="mp3",
         album=None,
         track_number=None,
     ):
@@ -299,3 +301,31 @@ def test_download_track_leaves_out_a_cover_that_is_not_jpeg_or_png(tmp_path):
     steps, calls = make_steps([GOOD], cover=b"RIFF....WEBPVP8 ")
     download_track("link", tmp_path, **steps)
     assert calls["tag"][2] is None
+
+
+def test_download_track_uses_the_codec(tmp_path):
+    steps, calls = make_steps([GOOD])
+    result = download_track("link", tmp_path, codec="flac", **steps)
+    assert calls["codec"] == "flac"
+    assert result.path.suffix == ".flac"
+
+
+def test_download_track_skips_only_a_file_of_the_same_format(tmp_path):
+    (tmp_path / "First - Song_ Part 1_2.mp3").write_bytes(b"old")
+    steps, calls = make_steps([GOOD])
+    result = download_track("link", tmp_path, codec="opus", **steps)
+    assert result.skipped is False
+    assert calls["codec"] == "opus"
+
+
+def test_download_link_passes_the_codec(tmp_path):
+    seen = []
+
+    def download_song(link, output_dir, **options):
+        seen.append(options["codec"])
+        return Result(track=TRACK, match=None, path=output_dir / "x.m4a")
+
+    download_link(
+        "x", tmp_path, codec="m4a", find=fake_find(), download_song=download_song
+    )
+    assert seen == ["m4a"]

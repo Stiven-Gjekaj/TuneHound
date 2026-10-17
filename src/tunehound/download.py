@@ -7,6 +7,7 @@ from typing import Any
 import yt_dlp
 
 DEFAULT_CODEC = "mp3"
+CODECS = ("mp3", "m4a", "opus", "flac")
 
 ProgressHook = Callable[[dict[str, Any]], None]
 

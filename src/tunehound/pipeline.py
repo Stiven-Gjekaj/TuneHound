@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tunehound import http
-from tunehound.download import DownloadError, download_audio
+from tunehound.download import DEFAULT_CODEC, DownloadError, download_audio
 from tunehound.matching import Candidate, best_match
 from tunehound.providers import Provider, ProviderError, TrackList, find_provider
 from tunehound.search import search_youtube
@@ -61,6 +61,7 @@ def download_track(
     album: str | None = None,
     track_number: int | None = None,
     direct: bool = False,
+    codec: str = DEFAULT_CODEC,
 ) -> Result:
     """Read the track of a link, find it, download it, and tag it.
 
@@ -76,7 +77,7 @@ def download_track(
     if track_number and not track.track_number:
         track = dataclasses.replace(track, track_number=track_number)
     stem = output_dir / safe_filename(f"{track.artist} - {track.title}")
-    existing = stem.with_name(f"{stem.name}.mp3")
+    existing = stem.with_name(f"{stem.name}.{codec}")
     if existing.is_file():
         return Result(track=track, match=None, path=existing, skipped=True)
     if direct:
@@ -87,7 +88,7 @@ def download_track(
         if match is None:
             raise NoMatchError(f"found no result for {track.artist} - {track.title}")
         url = match.url
-    path = download(url, stem, cookies_from_browser=cookies_from_browser)
+    path = download(url, stem, codec=codec, cookies_from_browser=cookies_from_browser)
     tag(path, track, _fetch_cover(track.cover_url, get_bytes))
     return Result(track=track, match=match, path=path)
 
@@ -118,6 +119,7 @@ def download_link(
     link: str,
     output_dir: Path,
     cookies_from_browser: str | None = None,
+    codec: str = DEFAULT_CODEC,
     on_outcome: OutcomeHook | None = None,
     on_list: Callable[[TrackList], None] | None = None,
     find: Callable[[str], Provider] = find_provider,
@@ -149,6 +151,7 @@ def download_link(
                 cookies_from_browser=cookies_from_browser,
                 fetch=provider.fetch_track,
                 direct=getattr(provider, "direct", False),
+                codec=codec,
                 album=album,
                 track_number=number,
             )

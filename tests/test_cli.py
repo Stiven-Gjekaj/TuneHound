@@ -57,10 +57,17 @@ def fake_download_link(monkeypatch, statuses, asked=None):
     from tunehound import pipeline
 
     def download_link(
-        link, output, cookies_from_browser=None, on_outcome=None, on_list=None
+        link,
+        output,
+        cookies_from_browser=None,
+        codec="mp3",
+        on_outcome=None,
+        on_list=None,
     ):
         if asked is not None:
-            asked.update(link=link, output=output, browser=cookies_from_browser)
+            asked.update(
+                link=link, output=output, browser=cookies_from_browser, codec=codec
+            )
         outcomes = make_outcomes(statuses)
         for index, outcome in enumerate(outcomes, start=1):
             on_outcome(index, len(outcomes), outcome)
@@ -89,6 +96,7 @@ def test_download_command_passes_the_options(monkeypatch, tmp_path):
         "link": "spotify:album:x",
         "output": Path(tmp_path),
         "browser": "firefox",
+        "codec": "mp3",
     }
 
 
@@ -125,7 +133,12 @@ def test_download_command_warns_about_a_list_that_can_be_cut(monkeypatch, capsys
     from tunehound.providers.spotify import TrackList
 
     def download_link(
-        link, output, cookies_from_browser=None, on_outcome=None, on_list=None
+        link,
+        output,
+        cookies_from_browser=None,
+        codec="mp3",
+        on_outcome=None,
+        on_list=None,
     ):
         on_list(TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(100)), 100))
         return []
@@ -149,3 +162,16 @@ def test_download_help_names_every_provider(capsys):
     ):
         assert name in help_text
     assert "search text" in help_text
+
+
+def test_download_command_passes_the_format(monkeypatch):
+    asked = {}
+    fake_download_link(monkeypatch, [], asked)
+    main(["download", "x", "--format", "opus"])
+    assert asked["codec"] == "opus"
+
+
+def test_download_command_refuses_an_unknown_format(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        main(["download", "x", "--format", "wav"])
+    assert exit_info.value.code == 2

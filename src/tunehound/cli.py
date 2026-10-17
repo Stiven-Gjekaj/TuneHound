@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from tunehound import __version__
+from tunehound.download import CODECS, DEFAULT_CODEC
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -36,6 +37,13 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path.cwd(),
         help="the folder for the audio file (default: the current folder)",
+    )
+    download.add_argument(
+        "-f",
+        "--format",
+        choices=CODECS,
+        default=DEFAULT_CODEC,
+        help="the audio format (default: mp3)",
     )
     download.add_argument(
         "--cookies-from-browser",
@@ -76,7 +84,12 @@ def summarize(outcomes) -> str:
     return f"{len(outcomes)} {songs}: {parts}."
 
 
-def run_download(link: str, output: Path, cookies_from_browser: str | None) -> int:
+def run_download(
+    link: str,
+    output: Path,
+    cookies_from_browser: str | None,
+    codec: str = DEFAULT_CODEC,
+) -> int:
     """Download the songs of a link and print what happened to each."""
     from tunehound import pipeline
     from tunehound.providers import ProviderError
@@ -86,6 +99,7 @@ def run_download(link: str, output: Path, cookies_from_browser: str | None) -> i
             link,
             output,
             cookies_from_browser=cookies_from_browser,
+            codec=codec,
             on_outcome=_print_outcome,
             on_list=_print_list,
         )
@@ -114,5 +128,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "tui":
         return run_tui()
     if args.command == "download":
-        return run_download(args.link, args.output, args.cookies_from_browser)
+        return run_download(
+            args.link, args.output, args.cookies_from_browser, args.format
+        )
     parser.error(f"unknown command: {args.command}")
