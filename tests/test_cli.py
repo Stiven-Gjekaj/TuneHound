@@ -133,3 +133,19 @@ def test_download_command_warns_about_a_list_that_can_be_cut(monkeypatch, capsys
     monkeypatch.setattr(pipeline, "download_link", download_link)
     main(["download", "spotify:playlist:x"])
     assert "the list has 100 songs" in capsys.readouterr().err
+
+
+def test_download_help_names_every_provider(capsys):
+    with pytest.raises(SystemExit):
+        main(["download", "--help"])
+    help_text = " ".join(capsys.readouterr().out.split())
+    for name in (
+        "Spotify",
+        "Deezer",
+        "Apple Music",
+        "YouTube",
+        "SoundCloud",
+        "Bandcamp",
+    ):
+        assert name in help_text
+    assert "search text" in help_text

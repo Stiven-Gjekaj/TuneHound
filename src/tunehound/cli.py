@@ -23,7 +23,13 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("tui", help="open the terminal user interface")
 
     download = commands.add_parser("download", help="download the songs of a link")
-    download.add_argument("link", help="a Spotify track, album, or playlist link")
+    download.add_argument(
+        "link",
+        help=(
+            "a Spotify, Deezer, Apple Music, YouTube, SoundCloud, or Bandcamp "
+            'link, or a search text such as "artist - title"'
+        ),
+    )
     download.add_argument(
         "-o",
         "--output",
