@@ -10,6 +10,7 @@ from mutagen.id3 import (
     TIT2,
     TPE1,
     TPE2,
+    TPOS,
     TRCK,
     TSRC,
     WOAS,
@@ -51,6 +52,8 @@ def write_tags(path: Path, track: Track, cover: bytes | None = None) -> None:
         tags.setall("TDRC", [TDRC(encoding=3, text=track.release_date)])
     if track.track_number:
         tags.setall("TRCK", [TRCK(encoding=3, text=str(track.track_number))])
+    if track.disc_number:
+        tags.setall("TPOS", [TPOS(encoding=3, text=str(track.disc_number))])
     if track.isrc:
         tags.setall("TSRC", [TSRC(encoding=3, text=track.isrc)])
     if cover is not None:

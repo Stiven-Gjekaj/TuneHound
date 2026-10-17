@@ -13,6 +13,7 @@ class Track:
     source_url: str
     album: str | None = None
     track_number: int | None = None
+    disc_number: int | None = None
     release_date: str | None = None
     isrc: str | None = None
     cover_url: str | None = None
