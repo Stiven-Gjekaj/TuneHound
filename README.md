@@ -1,4 +1,31 @@
-# TuneHound
+<div align="center">
+
+![TuneHound](assets/wordmark.svg)
+
+### Finds a song and downloads it
+
+_Paste a link. TuneHound finds the song, downloads it, and tags it._
+
+![Python](https://img.shields.io/badge/python_3.11+-22d3ee?style=for-the-badge&logo=python&logoColor=070b14)
+![Textual](https://img.shields.io/badge/textual-60a5fa?style=for-the-badge&logo=python&logoColor=070b14)
+![yt-dlp](https://img.shields.io/badge/yt--dlp-a78bfa?style=for-the-badge&logo=youtube&logoColor=070b14)
+![Spotify](https://img.shields.io/badge/spotify-f472b6?style=for-the-badge&logo=spotify&logoColor=070b14)
+[![MIT licence](https://img.shields.io/badge/mit_licence-fce7f3?style=for-the-badge&logoColor=070b14)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Stiven-Gjekaj/TuneHound?style=for-the-badge&label=release&labelColor=e0e7ff&color=e0e7ff)](https://github.com/Stiven-Gjekaj/TuneHound/releases/latest)
+
+<p align="center">
+  <a href="#overview"><b>Overview</b></a> |
+  <a href="#use"><b>Use</b></a> |
+  <a href="#what-works-now"><b>What works</b></a> |
+  <a href="docs/roadmap.md"><b>Roadmap</b></a> |
+  <a href="CHANGELOG.md"><b>Changelog</b></a>
+</p>
+
+</div>
+
+---
+
+## Overview
 
 TuneHound downloads music from many providers.
 It reads the metadata of a song from the provider.
@@ -41,7 +68,12 @@ Open the terminal user interface:
 
     uv run tunehound tui
 
-Press `q` to close it.
+![The main screen of TuneHound](assets/tui.svg)
+
+Paste a link and press Enter. The screen puts it in the queue. In this
+version the screen does not download yet; use `tunehound download`.
+Press `esc` to go to the queue, `/` to go back to the link, and `q` in the
+queue to close the app.
 
 ## What works now
 
