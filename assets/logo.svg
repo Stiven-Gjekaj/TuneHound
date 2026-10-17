@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="TuneHound">
+  <title>TuneHound</title>
+  <defs>
+    <!-- The tile is darker at the base, so the mark sits on a floor. -->
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#070b14"/>
+    </linearGradient>
+    <!-- A soft cyan pool behind the hound. It is the same light as the glow
+         in the wordmark. -->
+    <radialGradient id="pool" cx="0.42" cy="0.55" r="0.55">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#60a5fa" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#60a5fa" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Cyan to blue down the head, so the mark matches the start of the
+         word in the wordmark. -->
+    <linearGradient id="hound" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#60a5fa"/>
+    </linearGradient>
+    <!-- Violet to pink across the sound bars, the end of the same word. -->
+    <linearGradient id="sound" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#f472b6"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="256" height="256" rx="56" fill="url(#tile)"/>
+  <rect width="256" height="256" rx="56" fill="url(#pool)"/>
+  <rect x="1" y="1" width="254" height="254" rx="55" fill="none" stroke="#1e3a4a" stroke-width="2"/>
+
+  <g filter="url(#glow)">
+    <!-- The same pixel hound head as the wordmark, at a larger grid. -->
+    <g transform="translate(20 86)">
+      <path d="M50 0h40v10h-40zM40 10h60v10h-60zM20 20h120v10h-120zM10 30h70v10h-70zM90 30h70v10h-70zM10 40h130v10h-130zM0 50h140v10h-140zM0 60h40v10h-40zM50 60h100v10h-100zM0 70h40v10h-40zM60 70h90v10h-90zM10 80h30v10h-30zM70 80h70v10h-70zM10 90h30v10h-30zM80 90h50v10h-50zM20 100h10v10h-10zM90 100h20v10h-20z" fill="url(#hound)"/>
+      <path d="M140 40h20v10h-20zM140 50h20v10h-20z" fill="#f472b6"/>
+    </g>
+    <!-- Three sound bars in front of the nose. The hound tracks them. -->
+    <g fill="url(#sound)">
+      <rect x="192" y="116" width="10" height="40"/>
+      <rect x="208" y="100" width="10" height="72"/>
+      <rect x="224" y="86" width="10" height="100"/>
+    </g>
+  </g>
+</svg>
