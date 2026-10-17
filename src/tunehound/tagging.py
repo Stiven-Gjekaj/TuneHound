@@ -15,6 +15,7 @@ from mutagen.id3 import (
     TPOS,
     TRCK,
     TSRC,
+    USLT,
     WOAS,
     ID3NoHeaderError,
 )
@@ -37,7 +38,9 @@ def image_mime(data: bytes) -> str:
     raise TaggingError("the cover is not a JPEG or a PNG image")
 
 
-def _write_id3(path: Path, track: Track, cover: bytes | None) -> None:
+def _write_id3(
+    path: Path, track: Track, cover: bytes | None, lyrics: str | None
+) -> None:
     try:
         tags = ID3(path)
     except ID3NoHeaderError:
@@ -66,10 +69,14 @@ def _write_id3(path: Path, track: Track, cover: bytes | None) -> None:
                 )
             ],
         )
+    if lyrics:
+        tags.setall("USLT", [USLT(encoding=3, lang="eng", desc="", text=lyrics)])
     tags.save(path, v2_version=4)
 
 
-def _write_mp4(path: Path, track: Track, cover: bytes | None) -> None:
+def _write_mp4(
+    path: Path, track: Track, cover: bytes | None, lyrics: str | None
+) -> None:
     audio = MP4(path)
     if audio.tags is None:
         audio.add_tags()
@@ -95,10 +102,12 @@ def _write_mp4(path: Path, track: Track, cover: bytes | None) -> None:
             else MP4Cover.FORMAT_JPEG
         )
         tags["covr"] = [MP4Cover(cover, imageformat=kind)]
+    if lyrics:
+        tags["\xa9lyr"] = [lyrics]
     audio.save()
 
 
-def _vorbis_fields(track: Track) -> dict[str, list[str]]:
+def _vorbis_fields(track: Track, lyrics: str | None) -> dict[str, list[str]]:
     fields = {
         "title": [track.title],
         "artist": list(track.artists),
@@ -115,6 +124,8 @@ def _vorbis_fields(track: Track) -> dict[str, list[str]]:
         fields["discnumber"] = [str(track.disc_number)]
     if track.isrc:
         fields["isrc"] = [track.isrc]
+    if lyrics:
+        fields["lyrics"] = [lyrics]
     return fields
 
 
@@ -127,9 +138,11 @@ def _picture(cover: bytes) -> Picture:
     return picture
 
 
-def _write_flac(path: Path, track: Track, cover: bytes | None) -> None:
+def _write_flac(
+    path: Path, track: Track, cover: bytes | None, lyrics: str | None
+) -> None:
     audio = FLAC(path)
-    for key, values in _vorbis_fields(track).items():
+    for key, values in _vorbis_fields(track, lyrics).items():
         audio[key] = values
     if cover is not None:
         audio.clear_pictures()
@@ -137,9 +150,11 @@ def _write_flac(path: Path, track: Track, cover: bytes | None) -> None:
     audio.save()
 
 
-def _write_opus(path: Path, track: Track, cover: bytes | None) -> None:
+def _write_opus(
+    path: Path, track: Track, cover: bytes | None, lyrics: str | None
+) -> None:
     audio = OggOpus(path)
-    for key, values in _vorbis_fields(track).items():
+    for key, values in _vorbis_fields(track, lyrics).items():
         audio[key] = values
     if cover is not None:
         # Ogg files keep the cover as a FLAC picture block in base64.
@@ -156,9 +171,14 @@ _WRITERS = {
 }
 
 
-def write_tags(path: Path, track: Track, cover: bytes | None = None) -> None:
-    """Write the tags of a track, and the cover if there is one, into a file."""
+def write_tags(
+    path: Path,
+    track: Track,
+    cover: bytes | None = None,
+    lyrics: str | None = None,
+) -> None:
+    """Write the tags of a track, the cover, and the lyrics into a file."""
     writer = _WRITERS.get(path.suffix.lower())
     if writer is None:
         raise TaggingError(f"TuneHound cannot tag {path.suffix} files")
-    writer(path, track, cover)
+    writer(path, track, cover, lyrics)

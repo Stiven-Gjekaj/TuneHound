@@ -203,3 +203,35 @@ def test_write_tags_writes_the_metadata_into_opus(silent_opus):
     picture = Picture(base64.b64decode(block))
     assert (picture.mime, picture.type, picture.data) == ("image/jpeg", 3, JPEG)
     assert audio.info.length == pytest.approx(1.0, abs=0.1)
+
+
+# Made-up text. A test never holds real lyrics.
+LYRICS = "first made-up line\nsecond made-up line"
+
+
+def test_write_tags_writes_the_lyrics_into_mp3(silent_mp3):
+    write_tags(silent_mp3, TRACK, lyrics=LYRICS)
+    [frame] = ID3(silent_mp3).getall("USLT")
+    assert frame.text == LYRICS
+
+
+def test_write_tags_writes_the_lyrics_into_m4a(silent_m4a):
+    from mutagen.mp4 import MP4
+
+    write_tags(silent_m4a, TRACK, lyrics=LYRICS)
+    assert MP4(silent_m4a).tags["\xa9lyr"] == [LYRICS]
+
+
+def test_write_tags_writes_the_lyrics_into_flac_and_opus(silent_flac, silent_opus):
+    from mutagen.flac import FLAC
+    from mutagen.oggopus import OggOpus
+
+    write_tags(silent_flac, TRACK, lyrics=LYRICS)
+    write_tags(silent_opus, TRACK, lyrics=LYRICS)
+    assert FLAC(silent_flac)["lyrics"] == [LYRICS]
+    assert OggOpus(silent_opus)["lyrics"] == [LYRICS]
+
+
+def test_write_tags_writes_no_lyrics_by_default(silent_mp3):
+    write_tags(silent_mp3, TRACK)
+    assert not ID3(silent_mp3).getall("USLT")
