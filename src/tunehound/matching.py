@@ -6,7 +6,9 @@ from dataclasses import dataclass
 
 from tunehound.track import Track
 
-MAX_DURATION_DIFFERENCE = 30.0
+# In a test of 27 matches, the right songs were within 8 seconds of the
+# track, and the 3 wrong versions were 21 to 29 seconds away.
+MAX_DURATION_DIFFERENCE = 15.0
 MIN_TITLE_COVERAGE = 0.5
 MIN_SCORE = 0.6
 

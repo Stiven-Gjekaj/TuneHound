@@ -57,7 +57,7 @@ def test_score_prefers_the_topic_channel_of_the_artist():
 
 def test_score_prefers_a_closer_duration():
     close = make_candidate("Kevin MacLeod: Monkeys Spinning Monkeys", seconds=128)
-    far = make_candidate("Kevin MacLeod: Monkeys Spinning Monkeys", seconds=150)
+    far = make_candidate("Kevin MacLeod: Monkeys Spinning Monkeys", seconds=140)
     assert score(make_track(), close) > score(make_track(), far)
 
 
@@ -156,3 +156,9 @@ def test_is_artist_channel_refuses_another_channel():
     from tunehound.matching import is_artist_channel
 
     assert not is_artist_channel("lyrics hub", ["sharax"])
+
+
+def test_score_refuses_a_version_that_is_20_seconds_longer():
+    track = make_track(title="Raya - Slowed", artist="Zericxxn", seconds=110)
+    longer = make_candidate("Zericxxn - Raya (Ultra Slowed)", "Someone", 131)
+    assert score(track, longer) is None
