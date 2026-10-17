@@ -230,3 +230,72 @@ def test_spotify_provider_owns_only_spotify_links():
     assert provider.owns(f"https://open.spotify.com/album/{TRACK_ID}")
     assert provider.kind_of(f"spotify:playlist:{TRACK_ID}") == "playlist"
     assert not provider.owns("https://www.deezer.com/track/1")
+
+
+class FakeApi:
+    def __init__(self):
+        self.asked = []
+
+    def _track(self, track_id, title):
+        from tunehound.track import Track
+
+        return Track(
+            title, ("Main",), 1000, f"https://open.spotify.com/track/{track_id}"
+        )
+
+    def track(self, track_id):
+        self.asked.append(("track", track_id))
+        return self._track(track_id, "Single")
+
+    def album(self, album_id):
+        self.asked.append(("album", album_id))
+        return "An Album", [self._track("1" * 22, "One"), self._track("2" * 22, "Two")]
+
+    def playlist(self, playlist_id):
+        self.asked.append(("playlist", playlist_id))
+        tracks = [self._track(str(n % 10) * 22, f"S{n}") for n in range(3)]
+        return "Big Mix", tracks
+
+
+def test_provider_reads_a_full_playlist_with_the_api():
+    from tunehound.providers.spotify import SpotifyProvider
+
+    api = FakeApi()
+    provider = SpotifyProvider(api)
+    found = provider.fetch_list(f"https://open.spotify.com/playlist/{TRACK_ID}?si=x")
+    assert found.name == "Big Mix"
+    assert found.cut_limit is None
+    assert len(found.track_links) == 3
+    assert api.asked == [("playlist", TRACK_ID)]
+
+
+def test_provider_does_not_ask_again_for_a_track_of_a_list():
+    from tunehound.providers.spotify import SpotifyProvider
+
+    api = FakeApi()
+    provider = SpotifyProvider(api)
+    album = provider.fetch_list(f"spotify:album:{TRACK_ID}")
+    assert album.album == "An Album"
+    assert provider.fetch_track(album.track_links[1]).title == "Two"
+    assert api.asked == [("album", TRACK_ID)]
+
+
+def test_provider_asks_the_api_for_a_single_track():
+    from tunehound.providers.spotify import SpotifyProvider
+
+    api = FakeApi()
+    track = SpotifyProvider(api).fetch_track(
+        f"https://open.spotify.com/track/{TRACK_ID}"
+    )
+    assert track.title == "Single"
+    assert api.asked == [("track", TRACK_ID)]
+
+
+def test_use_spotify_api_gives_the_keys_to_the_provider(monkeypatch):
+    from tunehound import providers
+    from tunehound.providers.spotify import SpotifyProvider
+
+    [spotify] = [p for p in providers.PROVIDERS if isinstance(p, SpotifyProvider)]
+    monkeypatch.setattr(spotify, "api", None)
+    providers.use_spotify_api("id", "secret")
+    assert spotify.api is not None

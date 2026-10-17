@@ -8,10 +8,14 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from tunehound import http
 from tunehound.providers.base import ProviderError, TrackList
 from tunehound.track import Track
+
+if TYPE_CHECKING:
+    from tunehound.providers.spotify_api import SpotifyApi
 
 _ID = r"[0-9A-Za-z]{22}"
 _KIND = r"(?P<kind>track|album|playlist)"
@@ -137,9 +141,20 @@ def fetch_list(link: str, get_text: Callable[[str], str] = http.get_text) -> Tra
 
 
 class SpotifyProvider:
-    """Read songs from Spotify links."""
+    """Read songs from Spotify links.
+
+    With an API client, the provider reads the Web API, which gives full
+    lists and full tags. Without one, it reads the embed page, which needs
+    no keys but gives at most 100 songs of a playlist.
+    """
 
     name = "spotify"
+
+    def __init__(self, api: "SpotifyApi | None" = None) -> None:
+        self.api = api
+        # A list from the API already holds each full track, so keep them
+        # and do not ask again for each song.
+        self._tracks: dict[str, Track] = {}
 
     def owns(self, link: str) -> bool:
         try:
@@ -152,7 +167,28 @@ class SpotifyProvider:
         return parse_link(link).kind
 
     def fetch_track(self, link: str) -> Track:
-        return fetch_track(link)
+        if self.api is None:
+            return fetch_track(link)
+        track_id = parse_track_id(link)
+        url = TRACK_URL.format(id=track_id)
+        if url in self._tracks:
+            return self._tracks.pop(url)
+        return self.api.track(track_id)
 
     def fetch_list(self, link: str) -> TrackList:
-        return fetch_list(link)
+        if self.api is None:
+            return fetch_list(link)
+        parsed = parse_link(link)
+        if parsed.kind == "album":
+            name, tracks = self.api.album(parsed.id)
+        elif parsed.kind == "playlist":
+            name, tracks = self.api.playlist(parsed.id)
+        else:
+            raise SpotifyError(f"not a Spotify album or playlist link: {link.strip()}")
+        for track in tracks:
+            self._tracks[track.source_url] = track
+        return TrackList(
+            kind=parsed.kind,
+            name=name,
+            track_links=tuple(track.source_url for track in tracks),
+        )
