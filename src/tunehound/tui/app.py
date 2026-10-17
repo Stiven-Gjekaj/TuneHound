@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import DataTable, Footer, Input, Static
@@ -32,7 +33,13 @@ class TuneHoundApp(App[None]):
     # A subclass in another file must still find the stylesheet.
     CSS_PATH = Path(__file__).with_name("app.tcss")
     AUTO_FOCUS = "#link"
-    BINDINGS = [("q", "quit", "Quit")]
+    # The Input takes the printable keys while it has the focus. Escape
+    # moves the focus to the queue, where q closes the app.
+    BINDINGS = [
+        Binding("q", "quit", "Quit"),
+        Binding("escape", "focus_queue", "Queue"),
+        Binding("slash", "focus_link", "Link"),
+    ]
 
     def compose(self) -> ComposeResult:
         # The header is a small text wordmark. The two halves take the two
@@ -80,6 +87,14 @@ class TuneHoundApp(App[None]):
         table.add_row(link, "", source_of(link), "waiting", key=link)
         self.query_one("#empty", Static).display = False
         self.update_status()
+
+    def action_focus_queue(self) -> None:
+        """Move the focus to the queue table."""
+        self.query_one("#queue", DataTable).focus()
+
+    def action_focus_link(self) -> None:
+        """Move the focus to the link input."""
+        self.query_one("#link", Input).focus()
 
     def update_status(self) -> None:
         """Write the count of the queue to the status line."""

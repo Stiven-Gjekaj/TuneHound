@@ -82,11 +82,19 @@ def test_source_of_a_search_is_search():
     assert source_of("https://www.youtube.com/watch?v=abc") == "youtube.com"
 
 
+async def test_escape_moves_the_focus_to_the_queue_and_slash_back():
+    app = TuneHoundApp()
+    async with app.run_test() as pilot:
+        await pilot.press("escape")
+        assert app.query_one("#queue", DataTable).has_focus
+        await pilot.press("slash")
+        assert app.query_one("#link", Input).has_focus
+
+
 async def test_q_key_closes_the_app():
     app = TuneHoundApp()
     async with app.run_test() as pilot:
-        app.set_focus(None)
-        await pilot.press("q")
+        await pilot.press("escape", "q")
         await pilot.pause()
         assert not app.is_running
 
