@@ -305,3 +305,89 @@ def test_one_spotify_key_alone_stops_the_command(tmp_path, capsys):
     config.write_text('spotify_client_id = "abc"\n')
     assert main(["--config", str(config), "config"]) == 2
     assert "give both" in capsys.readouterr().err
+
+
+def test_read_input_skips_empty_lines_and_comments(tmp_path):
+    from tunehound.cli import read_input
+
+    path = tmp_path / "links.txt"
+    path.write_text(
+        "\ufeffhttps://open.spotify.com/track/a\n"
+        "\n"
+        "  # a comment\n"
+        "  artist - title  \r\n",
+        encoding="utf-8",
+    )
+    assert read_input(path) == ["https://open.spotify.com/track/a", "artist - title"]
+
+
+def test_input_file_downloads_each_line(monkeypatch, tmp_path, capsys):
+    from tunehound import pipeline
+
+    path = tmp_path / "links.txt"
+    path.write_text("one\nbad\nthree\n")
+    asked = []
+
+    def download_link(link, output, **hooks):
+        asked.append(link)
+        if link == "bad":
+            raise pipeline.ProviderError("TuneHound does not know this link: bad")
+        [outcome] = make_outcomes(["downloaded"])
+        hooks["on_outcome"](1, 1, outcome)
+        return [outcome]
+
+    monkeypatch.setattr(pipeline, "download_link", download_link)
+    assert main(["download", "--input", str(path)]) == 1
+    assert asked == ["one", "bad", "three"]
+    captured = capsys.readouterr()
+    assert captured.out.splitlines() == [
+        "[1/3] downloaded Artist - Song 1",
+        "[3/3] downloaded Artist - Song 1",
+        "3 songs: 2 downloaded, 0 skipped, 1 failed.",
+    ]
+    assert (
+        captured.err == "[2/3] failed     bad: TuneHound does not know this link: bad\n"
+    )
+
+
+def test_input_file_shows_the_song_of_a_list_line(monkeypatch, tmp_path, capsys):
+    from tunehound import pipeline
+
+    path = tmp_path / "links.txt"
+    path.write_text("a list\nb\n")
+
+    def download_link(link, output, **hooks):
+        outcomes = make_outcomes(
+            ["downloaded", "skipped"] if link == "a list" else ["downloaded"]
+        )
+        for index, outcome in enumerate(outcomes, start=1):
+            hooks["on_outcome"](index, len(outcomes), outcome)
+        return outcomes
+
+    monkeypatch.setattr(pipeline, "download_link", download_link)
+    assert main(["download", "-i", str(path)]) == 0
+    assert capsys.readouterr().out.splitlines()[:3] == [
+        "[1/2 song 1/2] downloaded Artist - Song 1",
+        "[1/2 song 2/2] skipped    Artist - Song 2",
+        "[2/2] downloaded Artist - Song 1",
+    ]
+
+
+@pytest.mark.parametrize("argv", [["download"], ["download", "x", "--input", "f.txt"]])
+def test_download_needs_one_link_or_one_input_file(argv, capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        main(argv)
+    assert exit_info.value.code == 2
+    assert "give one LINK or one --input FILE" in capsys.readouterr().err
+
+
+def test_a_missing_input_file_stops_the_command(tmp_path, capsys):
+    assert main(["download", "--input", str(tmp_path / "none.txt")]) == 2
+    assert "cannot read" in capsys.readouterr().err
+
+
+def test_an_empty_input_file_stops_the_command(tmp_path, capsys):
+    path = tmp_path / "links.txt"
+    path.write_text("\n# only a comment\n")
+    assert main(["download", "--input", str(path)]) == 2
+    assert "has no links" in capsys.readouterr().err

@@ -94,12 +94,33 @@ def build_parser(defaults: dict | None = None) -> argparse.ArgumentParser:
     )
     download.add_argument(
         "link",
+        nargs="?",
         help=(
             "a Spotify, Deezer, Apple Music, YouTube, SoundCloud, or Bandcamp "
             'link, or a search text such as "artist - title"'
         ),
     )
+    download.add_argument(
+        "-i",
+        "--input",
+        type=Path,
+        metavar="FILE",
+        help=(
+            "a text file with one link or search text on each line, in place "
+            "of LINK. Empty lines and lines that start with # do not count."
+        ),
+    )
     return parser
+
+
+def read_input(path: Path) -> list[str]:
+    """Return the links and search texts of an input file, one for each line."""
+    lines = path.read_text(encoding="utf-8-sig").splitlines()
+    return [
+        line.strip()
+        for line in lines
+        if line.strip() and not line.strip().startswith("#")
+    ]
 
 
 def _describe(outcome) -> str:
@@ -163,6 +184,54 @@ def run_download(
     return 1 if any(outcome.status == "failed" for outcome in outcomes) else 0
 
 
+def _line_printer(line: int, lines: int):
+    def print_outcome(index: int, total: int, outcome) -> None:
+        position = f"{line}/{lines}"
+        if total > 1:
+            position += f" song {index}/{total}"
+        text = f"[{position}] {outcome.status:<10} {_describe(outcome)}"
+        print(text, file=sys.stderr if outcome.status == "failed" else sys.stdout)
+
+    return print_outcome
+
+
+def run_download_many(
+    links: list[str],
+    output: Path,
+    cookies_from_browser: str | None,
+    codec: str = DEFAULT_CODEC,
+    lyrics: bool = False,
+    template: str = DEFAULT_TEMPLATE,
+) -> int:
+    """Download the songs of many links, one link after the other.
+
+    A link that fails does not stop the other links.
+    """
+    from tunehound import pipeline
+    from tunehound.providers import ProviderError
+
+    outcomes = []
+    for line, link in enumerate(links, start=1):
+        print_outcome = _line_printer(line, len(links))
+        try:
+            outcomes += pipeline.download_link(
+                link,
+                output,
+                cookies_from_browser=cookies_from_browser,
+                codec=codec,
+                lyrics=lyrics,
+                template=template,
+                on_outcome=print_outcome,
+                on_list=_print_list,
+            )
+        except (ProviderError, OSError) as error:
+            failed = pipeline.Outcome(link=link, error=str(error))
+            print_outcome(1, 1, failed)
+            outcomes.append(failed)
+    print(summarize(outcomes))
+    return 1 if any(outcome.status == "failed" for outcome in outcomes) else 0
+
+
 def run_config(path: Path, values: dict) -> int:
     """Print the path of the configuration file and the values in it."""
     state = "found" if path.is_file() else "not found, so TuneHound uses the defaults"
@@ -209,12 +278,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "config":
         return run_config(path, values)
     if args.command == "download":
-        return run_download(
-            args.link,
+        options = (
             args.output,
             args.cookies_from_browser,
             args.format,
             args.lyrics,
             args.template,
         )
+        if (args.link is None) == (args.input is None):
+            parser.error("give one LINK or one --input FILE")
+        if args.input is None:
+            return run_download(args.link, *options)
+        try:
+            links = read_input(args.input)
+        except (OSError, UnicodeDecodeError) as error:
+            print(f"tunehound: cannot read {args.input}: {error}", file=sys.stderr)
+            return 2
+        if not links:
+            print(f"tunehound: {args.input} has no links", file=sys.stderr)
+            return 2
+        return run_download_many(links, *options)
     parser.error(f"unknown command: {args.command}")
