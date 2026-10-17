@@ -17,8 +17,17 @@ def build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    parser.add_subparsers(dest="command", metavar="COMMAND")
+    commands = parser.add_subparsers(dest="command", metavar="COMMAND")
+    commands.add_parser("tui", help="open the terminal user interface")
     return parser
+
+
+def run_tui() -> int:
+    """Open the terminal user interface."""
+    from tunehound.tui import TuneHoundApp
+
+    TuneHoundApp().run()
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -28,4 +37,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command is None:
         parser.print_help()
         return 0
-    return 0
+    if args.command == "tui":
+        return run_tui()
+    parser.error(f"unknown command: {args.command}")
