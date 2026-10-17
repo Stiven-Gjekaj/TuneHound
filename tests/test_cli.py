@@ -62,6 +62,7 @@ def fake_download_link(monkeypatch, statuses, asked=None):
         cookies_from_browser=None,
         codec="mp3",
         lyrics=False,
+        template="{artist} - {title}",
         on_outcome=None,
         on_list=None,
     ):
@@ -72,6 +73,7 @@ def fake_download_link(monkeypatch, statuses, asked=None):
                 browser=cookies_from_browser,
                 codec=codec,
                 lyrics=lyrics,
+                template=template,
             )
         outcomes = make_outcomes(statuses)
         for index, outcome in enumerate(outcomes, start=1):
@@ -103,6 +105,7 @@ def test_download_command_passes_the_options(monkeypatch, tmp_path):
         "browser": "firefox",
         "codec": "mp3",
         "lyrics": False,
+        "template": "{artist} - {title}",
     }
 
 
@@ -144,6 +147,7 @@ def test_download_command_warns_about_a_list_that_can_be_cut(monkeypatch, capsys
         cookies_from_browser=None,
         codec="mp3",
         lyrics=False,
+        template="{artist} - {title}",
         on_outcome=None,
         on_list=None,
     ):
@@ -189,3 +193,17 @@ def test_download_command_passes_the_lyrics_option(monkeypatch):
     fake_download_link(monkeypatch, [], asked)
     main(["download", "x", "--lyrics"])
     assert asked["lyrics"] is True
+
+
+def test_download_command_passes_the_template(monkeypatch):
+    asked = {}
+    fake_download_link(monkeypatch, [], asked)
+    main(["download", "x", "--template", "{artist}/{album}/{track_number:02} {title}"])
+    assert asked["template"] == "{artist}/{album}/{track_number:02} {title}"
+
+
+def test_download_command_refuses_a_bad_template(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        main(["download", "x", "--template", "{genre} - {title}"])
+    assert exit_info.value.code == 2
+    assert "unknown field {genre}" in capsys.readouterr().err

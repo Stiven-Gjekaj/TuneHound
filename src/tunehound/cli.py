@@ -7,6 +7,16 @@ from pathlib import Path
 
 from tunehound import __version__
 from tunehound.download import CODECS, DEFAULT_CODEC
+from tunehound.naming import DEFAULT_TEMPLATE, FIELDS, TemplateError, check_template
+
+
+def template_argument(text: str) -> str:
+    """Check a file name template on the command line."""
+    try:
+        check_template(text)
+    except TemplateError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
+    return text
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -39,6 +49,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--lyrics",
         action="store_true",
         help="write the lyrics from lrclib.net into the tags",
+    )
+    options.add_argument(
+        "-t",
+        "--template",
+        type=template_argument,
+        default=DEFAULT_TEMPLATE,
+        help=(
+            f'the path of each file, with no suffix (default: "{DEFAULT_TEMPLATE}"). '
+            "A slash makes a folder. Fields: "
+            + ", ".join(f"{{{name}}}" for name in FIELDS)
+        ),
     )
     options.add_argument(
         "--cookies-from-browser",
@@ -97,6 +118,7 @@ def run_download(
     cookies_from_browser: str | None,
     codec: str = DEFAULT_CODEC,
     lyrics: bool = False,
+    template: str = DEFAULT_TEMPLATE,
 ) -> int:
     """Download the songs of a link and print what happened to each."""
     from tunehound import pipeline
@@ -109,6 +131,7 @@ def run_download(
             cookies_from_browser=cookies_from_browser,
             codec=codec,
             lyrics=lyrics,
+            template=template,
             on_outcome=_print_outcome,
             on_list=_print_list,
         )
@@ -133,5 +156,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.cookies_from_browser,
             args.format,
             args.lyrics,
+            args.template,
         )
     parser.error(f"unknown command: {args.command}")
