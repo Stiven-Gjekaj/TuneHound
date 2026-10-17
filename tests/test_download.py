@@ -76,3 +76,25 @@ def test_download_audio_turns_a_yt_dlp_error_into_a_download_error(tmp_path):
 
     with pytest.raises(DownloadError, match="no audio"):
         download_audio("https://x.invalid", tmp_path / "a", downloader_factory=factory)
+
+
+def test_build_options_read_the_cookies_of_a_browser(tmp_path):
+    options = build_options(tmp_path / "x", cookies_from_browser="firefox")
+    assert options["cookiesfrombrowser"] == ("firefox",)
+    assert "cookiesfrombrowser" not in build_options(tmp_path / "x")
+
+
+def test_download_audio_passes_the_browser_to_yt_dlp(tmp_path):
+    made = []
+
+    def factory(options):
+        made.append(FakeDownloader(options))
+        return made[-1]
+
+    download_audio(
+        "https://x.invalid",
+        tmp_path / "a",
+        cookies_from_browser="chrome",
+        downloader_factory=factory,
+    )
+    assert made[0].options["cookiesfrombrowser"] == ("chrome",)

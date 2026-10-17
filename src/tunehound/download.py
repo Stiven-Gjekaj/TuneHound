@@ -19,8 +19,14 @@ def build_options(
     stem: Path,
     codec: str = DEFAULT_CODEC,
     progress_hook: ProgressHook | None = None,
+    cookies_from_browser: str | None = None,
 ) -> dict[str, Any]:
-    """Make the yt-dlp options that write the audio to `stem` plus the codec."""
+    """Make the yt-dlp options that write the audio to `stem` plus the codec.
+
+    `cookies_from_browser` names a browser, for example "firefox". yt-dlp
+    then reads the YouTube sign-in of that browser. YouTube asks for a
+    sign-in when it thinks that the request comes from a bot.
+    """
     options: dict[str, Any] = {
         "format": "bestaudio/best",
         "outtmpl": f"{stem}.%(ext)s",
@@ -38,6 +44,8 @@ def build_options(
     }
     if progress_hook is not None:
         options["progress_hooks"] = [progress_hook]
+    if cookies_from_browser:
+        options["cookiesfrombrowser"] = (cookies_from_browser,)
     return options
 
 
@@ -46,11 +54,12 @@ def download_audio(
     stem: Path,
     codec: str = DEFAULT_CODEC,
     progress_hook: ProgressHook | None = None,
+    cookies_from_browser: str | None = None,
     downloader_factory: Callable[[dict[str, Any]], Any] = yt_dlp.YoutubeDL,
 ) -> Path:
     """Download the audio at a URL and return the path of the audio file."""
     stem.parent.mkdir(parents=True, exist_ok=True)
-    options = build_options(stem, codec, progress_hook)
+    options = build_options(stem, codec, progress_hook, cookies_from_browser)
     try:
         with downloader_factory(options) as downloader:
             downloader.download([url])
