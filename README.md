@@ -53,7 +53,13 @@ TuneHound does not decrypt DRM streams.
 
 ## Install
 
-    uv tool install git+https://github.com/Stiven-Gjekaj/TuneHound@v0.5.0
+With uv:
+
+    uv tool install git+https://github.com/Stiven-Gjekaj/TuneHound@v1.0.0
+
+Or with pipx:
+
+    pipx install git+https://github.com/Stiven-Gjekaj/TuneHound@v1.0.0
 
 Then run `tunehound` with no `uv run` in front.
 
@@ -101,9 +107,37 @@ Then let yt-dlp use the YouTube sign-in of your browser:
 
     uv run tunehound download LINK --cookies-from-browser firefox
 
+Choose the path of each file with a template. A slash makes a folder:
+
+    uv run tunehound download LINK --template "{artist}/{album}/{track_number:02} {title}"
+
+The fields are `{artist}`, `{artists}`, `{title}`, `{album}`,
+`{track_number}`, `{disc_number}`, and `{year}`. A missing album becomes
+"Unknown Album", a missing year becomes "Unknown Year", and a missing
+number becomes 0.
+
 Show the help:
 
     uv run tunehound --help
+
+## Configuration
+
+A configuration file holds your defaults. A value on the command line wins
+over it. See where TuneHound looks for the file:
+
+    uv run tunehound config
+
+On macOS and Linux the file is `~/.config/tunehound/config.toml`. On
+Windows it is `%APPDATA%\tunehound\config.toml`. The environment variable
+`TUNEHOUND_CONFIG`, or the option `--config FILE`, gives another path.
+
+    output = "~/Music"
+    format = "flac"
+    lyrics = true
+    template = "{artist}/{album}/{track_number:02} {title}"
+    cookies_from_browser = "firefox"
+
+Use `--no-lyrics` to turn off the lyrics of the file for one command.
 
 ## What works now
 
