@@ -1,5 +1,8 @@
 """The main Textual app of TuneHound."""
 
+import threading
+from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -8,6 +11,13 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import DataTable, Footer, Input, Static
+
+from tunehound import pipeline
+from tunehound.download import DEFAULT_CODEC
+from tunehound.providers import ProviderError
+
+MAX_PARALLEL = 3
+DONE_STATES = ("downloaded", "skipped")
 
 
 class DownloadRequested(Message):
@@ -26,8 +36,19 @@ def source_of(text: str) -> str:
     return host.removeprefix("www.").removeprefix("open.")
 
 
+def state_of(status: str) -> str:
+    """Return the group of a status: waiting, active, done, or failed."""
+    if status == "waiting":
+        return "waiting"
+    if status in DONE_STATES:
+        return "done"
+    if status == "failed":
+        return "failed"
+    return "active"
+
+
 class TuneHoundApp(App[None]):
-    """Show the main screen of TuneHound."""
+    """Show the main screen of TuneHound, and run the downloads."""
 
     TITLE = "TuneHound"
     # A subclass in another file must still find the stylesheet.
@@ -40,6 +61,26 @@ class TuneHoundApp(App[None]):
         Binding("escape", "focus_queue", "Queue"),
         Binding("slash", "focus_link", "Link"),
     ]
+
+    def __init__(
+        self,
+        output_dir: Path | None = None,
+        codec: str = DEFAULT_CODEC,
+        lyrics: bool = False,
+        cookies_from_browser: str | None = None,
+        download_link: Callable[..., list] | None = None,
+        max_parallel: int = MAX_PARALLEL,
+    ) -> None:
+        super().__init__()
+        self.output_dir = output_dir or Path.cwd()
+        self.codec = codec
+        self.lyrics = lyrics
+        self.cookies_from_browser = cookies_from_browser
+        self._download_link = download_link or pipeline.download_link
+        self._slots = threading.Semaphore(max_parallel)
+        self._count = 0
+        self._states: dict[str, str] = {}
+        self._last_error = ""
 
     def compose(self) -> ComposeResult:
         # The header is a small text wordmark. The two halves take the two
@@ -68,7 +109,8 @@ class TuneHoundApp(App[None]):
 
     def on_mount(self) -> None:
         table = self.query_one("#queue", DataTable)
-        table.add_columns("Title", "Artist", "Source", "Status")
+        for label in ("Title", "Artist", "Source", "Status"):
+            table.add_column(label, key=label.lower())
         self.update_status()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -79,13 +121,117 @@ class TuneHoundApp(App[None]):
         self.add_to_queue(link)
         self.post_message(DownloadRequested(link))
 
-    def add_to_queue(self, link: str) -> None:
-        """Put one link in the queue with the status "waiting"."""
+    def add_to_queue(self, link: str) -> str:
+        """Put one link in the queue with the status "waiting".
+
+        Return the key of the new row.
+        """
+        self._count += 1
+        key = f"item-{self._count}"
         table = self.query_one("#queue", DataTable)
-        # The title and the artist are not known yet. The download code
-        # fills them in later. The link itself stands in for the title.
-        table.add_row(link, "", source_of(link), "waiting", key=link)
+        # The title and the artist are not known yet. The download fills
+        # them in later. The link itself stands in for the title.
+        table.add_row(link, "", source_of(link), "waiting", key=key)
+        self._states[key] = "waiting"
         self.query_one("#empty", Static).display = False
+        self.update_status()
+        return key
+
+    def on_download_requested(self, message: DownloadRequested) -> None:
+        key = f"item-{self._count}"
+        self.run_worker(
+            partial(self._run_download, key, message.link),
+            thread=True,
+            group="downloads",
+            exit_on_error=False,
+        )
+
+    def _run_download(self, key: str, link: str) -> None:
+        """Download a link in a worker thread, and report to the screen."""
+        job = {"is_list": False, "total": 0, "done": 0}
+
+        def on_list(track_list) -> None:
+            job["is_list"] = True
+            job["total"] = len(track_list.track_links)
+            name = track_list.name or link
+            self.call_from_thread(self.set_row, key, name, None, f"0/{job['total']}")
+
+        def row_key(index: int) -> str:
+            return f"{key}-{index}" if job["is_list"] else key
+
+        def on_start(index: int, total: int, song_link: str) -> None:
+            if job["is_list"]:
+                self.call_from_thread(self.add_child, key, index, song_link)
+            else:
+                self.call_from_thread(self.set_row, key, None, None, "searching")
+
+        def on_progress(index: int, fraction: float) -> None:
+            status = f"{round(fraction * 100)}%"
+            self.call_from_thread(self.set_row, row_key(index), None, None, status)
+
+        def on_outcome(index: int, total: int, outcome) -> None:
+            title = artist = None
+            if outcome.result is not None:
+                title = outcome.result.track.title
+                artist = outcome.result.track.artist
+            else:
+                self.call_from_thread(self.note_error, outcome.error or "")
+            if job["is_list"]:
+                title = f"  {title}" if title else None
+            self.call_from_thread(
+                self.set_row, row_key(index), title, artist, outcome.status
+            )
+            if job["is_list"]:
+                job["done"] += 1
+                status = f"{job['done']}/{job['total']}"
+                if job["done"] == job["total"]:
+                    status = "downloaded"
+                self.call_from_thread(self.set_row, key, None, None, status)
+
+        with self._slots:
+            try:
+                outcomes = self._download_link(
+                    link,
+                    self.output_dir,
+                    cookies_from_browser=self.cookies_from_browser,
+                    codec=self.codec,
+                    lyrics=self.lyrics,
+                    on_outcome=on_outcome,
+                    on_list=on_list,
+                    on_start=on_start,
+                    on_progress=on_progress,
+                )
+            except (ProviderError, OSError) as error:
+                self.call_from_thread(self.note_error, str(error))
+                self.call_from_thread(self.set_row, key, None, None, "failed")
+                return
+        if job["is_list"] and not outcomes:
+            self.call_from_thread(self.set_row, key, None, None, "downloaded")
+
+    def add_child(self, parent: str, index: int, song_link: str) -> None:
+        """Add a row for one song of a list, under the rows of the list."""
+        table = self.query_one("#queue", DataTable)
+        key = f"{parent}-{index}"
+        table.add_row(f"  {song_link}", "", source_of(song_link), "searching", key=key)
+        self._states[key] = "active"
+        self.update_status()
+
+    def set_row(
+        self, key: str, title: str | None, artist: str | None, status: str
+    ) -> None:
+        """Change the cells of a row. A None value keeps the cell."""
+        table = self.query_one("#queue", DataTable)
+        if title is not None:
+            table.update_cell(key, "title", title)
+        if artist is not None:
+            table.update_cell(key, "artist", artist)
+        table.update_cell(key, "status", status)
+        self._states[key] = state_of(status)
+        self.update_status()
+
+    def note_error(self, message: str) -> None:
+        """Keep the last error, to show it in the status line."""
+        self._last_error = message
         self.update_status()
 
     def action_focus_queue(self) -> None:
@@ -97,12 +243,17 @@ class TuneHoundApp(App[None]):
         self.query_one("#link", Input).focus()
 
     def update_status(self) -> None:
-        """Write the count of the queue to the status line."""
-        count = self.query_one("#queue", DataTable).row_count
+        """Write the count of each state to the status line."""
+        count = len(self._states)
         if count == 0:
             text = "Ready. The queue is empty."
-        elif count == 1:
-            text = "1 item in the queue, 1 waiting."
         else:
-            text = f"{count} items in the queue, {count} waiting."
+            groups = {name: 0 for name in ("waiting", "active", "done", "failed")}
+            for state in self._states.values():
+                groups[state] += 1
+            items = "item" if count == 1 else "items"
+            parts = ", ".join(f"{number} {name}" for name, number in groups.items())
+            text = f"{count} {items}: {parts}."
+            if self._last_error:
+                text += f" Last error: {self._last_error}"
         self.query_one("#status", Static).update(text)
