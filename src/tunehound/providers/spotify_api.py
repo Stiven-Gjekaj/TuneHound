@@ -10,7 +10,7 @@ Spotify itself makes.
 import base64
 import time
 import urllib.error
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from tunehound import http
@@ -20,6 +20,8 @@ from tunehound.track import Track
 TOKEN_URL = "https://accounts.spotify.com/api/token"
 API = "https://api.spotify.com/v1"
 TRACK_URL = "https://open.spotify.com/track/{id}"
+PAGE_SIZE = 100
+ALBUM_PAGE_SIZE = 50
 # Ask for a new token a little before the old one ends.
 TOKEN_MARGIN_SECONDS = 60
 
@@ -120,3 +122,44 @@ class SpotifyApi:
     def track(self, track_id: str) -> Track:
         """Read one track."""
         return parse_track(self.get(f"/tracks/{track_id}"))
+
+    def _pages(self, path: str) -> Iterator[dict]:
+        """Give each item of a paged list, and follow the "next" links."""
+        url: str | None = path
+        while url:
+            page = self.get(url)
+            yield from page.get("items") or []
+            url = page.get("next")
+
+    def album(self, album_id: str) -> tuple[str, list[Track]]:
+        """Read the name and the tracks of an album."""
+        info = self.get(f"/albums/{album_id}")
+        # The tracks of an album do not hold the album, so add it.
+        album = {
+            "name": info.get("name"),
+            "release_date": info.get("release_date"),
+            "images": info.get("images") or [],
+        }
+        tracks = [
+            parse_track({**item, "album": album})
+            for item in self._pages(
+                f"/albums/{album_id}/tracks?limit={ALBUM_PAGE_SIZE}"
+            )
+            if item and item.get("id")
+        ]
+        return info.get("name") or "", tracks
+
+    def playlist(self, playlist_id: str) -> tuple[str, list[Track]]:
+        """Read the name and every track of a playlist, page by page."""
+        info = self.get(f"/playlists/{playlist_id}?fields=name")
+        tracks = []
+        for item in self._pages(f"/playlists/{playlist_id}/tracks?limit={PAGE_SIZE}"):
+            data = (item or {}).get("track")
+            # A playlist can hold podcast episodes, local files, and songs
+            # that Spotify removed. TuneHound skips them.
+            if not data or data.get("type") != "track" or data.get("is_local"):
+                continue
+            if not data.get("id"):
+                continue
+            tracks.append(parse_track(data))
+        return info.get("name") or "", tracks

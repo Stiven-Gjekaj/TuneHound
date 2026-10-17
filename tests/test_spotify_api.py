@@ -137,3 +137,69 @@ def test_a_refused_token_is_asked_again_next_time():
     fake.answers[url] = make_track()
     api.track(TRACK_ID)
     assert fake.tokens == 2
+
+
+API = "https://api.spotify.com/v1"
+
+
+def test_playlist_reads_every_page_and_skips_what_is_not_a_song():
+    first = f"{API}/playlists/P/tracks?limit=100"
+    second = f"{API}/playlists/P/tracks?offset=100&limit=100"
+    fake = FakeSpotify(
+        {
+            f"{API}/playlists/P?fields=name": {"name": "Mix"},
+            first: {
+                "items": [
+                    {"track": make_track(id="a")},
+                    {"track": None},
+                    {"track": make_track(id="b", type="episode")},
+                    {"track": make_track(id="c", is_local=True)},
+                ],
+                "next": second,
+            },
+            second: {"items": [{"track": make_track(id="d")}, {}], "next": None},
+        }
+    )
+    name, tracks = SpotifyApi("id", "secret", request=fake).playlist("P")
+    assert name == "Mix"
+    assert [t.source_url.rsplit("/", 1)[1] for t in tracks] == ["a", "d"]
+    assert tracks[0].isrc == "GBXXX0000001"
+    assert fake.tokens == 1
+
+
+def test_album_adds_the_album_to_each_track():
+    tracks_url = f"{API}/albums/A/tracks?limit=50"
+    fake = FakeSpotify(
+        {
+            f"{API}/albums/A": {
+                "name": "An Album",
+                "release_date": "1987",
+                "images": [{"url": "https://img.invalid/640", "width": 640}],
+            },
+            tracks_url: {
+                "items": [
+                    {
+                        "id": "1",
+                        "name": "One",
+                        "artists": [{"name": "Main"}],
+                        "track_number": 1,
+                    },
+                    {
+                        "id": "2",
+                        "name": "Two",
+                        "artists": [{"name": "Main"}],
+                        "track_number": 2,
+                    },
+                ],
+                "next": None,
+            },
+        }
+    )
+    name, tracks = SpotifyApi("id", "secret", request=fake).album("A")
+    assert name == "An Album"
+    assert [(t.title, t.track_number, t.album) for t in tracks] == [
+        ("One", 1, "An Album"),
+        ("Two", 2, "An Album"),
+    ]
+    assert tracks[0].release_date == "1987"
+    assert tracks[0].cover_url == "https://img.invalid/640"
