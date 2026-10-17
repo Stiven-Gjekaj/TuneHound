@@ -7,6 +7,24 @@ number, and a change that breaks the command line or the file names raises
 the major number.
 Each release on GitHub has the wheel and the source archive as assets.
 
+## 0.3.0 (2026-10-17)
+
+More providers.
+
+- Deezer track, album, and playlist links, from the public Deezer API. Short
+  `link.deezer.com` links work too. A Deezer song gets the album, the track
+  number, the disc number, the ISRC, and a cover of 1000 pixels.
+- Apple Music song and album links, from the iTunes lookup API. An album
+  downloads in the order of its discs.
+- A plain search text, for example `"artist - title"`, finds the first song
+  on Deezer.
+- YouTube, YouTube Music, SoundCloud, and Bandcamp links go to yt-dlp with
+  no match step. Playlists of YouTube and SoundCloud, and Bandcamp albums,
+  work too.
+- The disc number goes into the tags.
+- A cover that is not a JPEG or a PNG image is left out. Before, it could
+  stop the song.
+
 ## 0.2.0 (2026-10-17)
 
 Albums and playlists.
