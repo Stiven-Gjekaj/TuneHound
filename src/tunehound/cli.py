@@ -22,8 +22,8 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", metavar="COMMAND")
     commands.add_parser("tui", help="open the terminal user interface")
 
-    download = commands.add_parser("download", help="download a song from a link")
-    download.add_argument("link", help="a Spotify track link")
+    download = commands.add_parser("download", help="download the songs of a link")
+    download.add_argument("link", help="a Spotify track, album, or playlist link")
     download.add_argument(
         "-o",
         "--output",
@@ -39,22 +39,45 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _describe(outcome) -> str:
+    if outcome.result is None:
+        return f"{outcome.link}: {outcome.error}"
+    track = outcome.result.track
+    return f"{track.artist} - {track.title}"
+
+
+def _print_outcome(index: int, total: int, outcome) -> None:
+    line = f"[{index}/{total}] {outcome.status:<10} {_describe(outcome)}"
+    print(line, file=sys.stderr if outcome.status == "failed" else sys.stdout)
+
+
+def summarize(outcomes) -> str:
+    """Return one line that counts the outcomes of each kind."""
+    counts = {status: 0 for status in ("downloaded", "skipped", "failed")}
+    for outcome in outcomes:
+        counts[outcome.status] += 1
+    songs = "song" if len(outcomes) == 1 else "songs"
+    parts = ", ".join(f"{count} {status}" for status, count in counts.items())
+    return f"{len(outcomes)} {songs}: {parts}."
+
+
 def run_download(link: str, output: Path, cookies_from_browser: str | None) -> int:
-    """Download one song and print where it is."""
-    from tunehound.download import DownloadError
-    from tunehound.pipeline import NoMatchError, download_track
+    """Download the songs of a link and print what happened to each."""
+    from tunehound import pipeline
     from tunehound.providers.spotify import SpotifyError
-    from tunehound.tagging import TaggingError
 
     try:
-        result = download_track(link, output, cookies_from_browser=cookies_from_browser)
-    except (SpotifyError, NoMatchError, DownloadError, TaggingError, OSError) as error:
+        outcomes = pipeline.download_link(
+            link,
+            output,
+            cookies_from_browser=cookies_from_browser,
+            on_outcome=_print_outcome,
+        )
+    except (SpotifyError, OSError) as error:
         print(f"tunehound: {error}", file=sys.stderr)
         return 1
-    print(f"{result.track.artist} - {result.track.title}")
-    print(f"  from {result.match.url}")
-    print(f"  to   {result.path}")
-    return 0
+    print(summarize(outcomes))
+    return 1 if any(outcome.status == "failed" for outcome in outcomes) else 0
 
 
 def run_tui() -> int:

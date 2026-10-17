@@ -4,7 +4,7 @@ import sys
 import pytest
 
 from tunehound import __version__
-from tunehound.cli import main
+from tunehound.cli import main, summarize
 
 
 def test_version_flag_prints_the_version(capsys):
@@ -35,26 +35,47 @@ def test_module_runs_as_a_program():
     assert result.stdout.strip() == f"tunehound {__version__}"
 
 
-def test_download_command_prints_the_result(monkeypatch, capsys, tmp_path):
+def make_outcomes(statuses):
     from pathlib import Path
 
-    from tunehound import pipeline
-    from tunehound.matching import Candidate
+    from tunehound.pipeline import Outcome, Result
     from tunehound.track import Track
 
+    outcomes = []
+    for number, status in enumerate(statuses, start=1):
+        link = f"link{number}"
+        if status == "failed":
+            outcomes.append(Outcome(link, error="found nothing"))
+            continue
+        track = Track(f"Song {number}", ("Artist",), 1000, link)
+        result = Result(track, None, Path(f"{number}.mp3"), skipped=status == "skipped")
+        outcomes.append(Outcome(link, result))
+    return outcomes
+
+
+def fake_download_link(monkeypatch, statuses, asked=None):
+    from tunehound import pipeline
+
+    def download_link(link, output, cookies_from_browser=None, on_outcome=None):
+        if asked is not None:
+            asked.update(link=link, output=output, browser=cookies_from_browser)
+        outcomes = make_outcomes(statuses)
+        for index, outcome in enumerate(outcomes, start=1):
+            on_outcome(index, len(outcomes), outcome)
+        return outcomes
+
+    monkeypatch.setattr(pipeline, "download_link", download_link)
+
+
+def test_download_command_passes_the_options(monkeypatch, tmp_path):
+    from pathlib import Path
+
     asked = {}
-
-    def fake_download_track(link, output, cookies_from_browser=None):
-        asked.update(link=link, output=output, browser=cookies_from_browser)
-        track = Track("Song", ("Artist",), 1000, "https://x.invalid")
-        match = Candidate("abc", "Song", "Artist - Topic", 1.0, "youtube")
-        return pipeline.Result(track, match, output / "Artist - Song.mp3")
-
-    monkeypatch.setattr(pipeline, "download_track", fake_download_track)
+    fake_download_link(monkeypatch, ["downloaded"], asked)
     code = main(
         [
             "download",
-            "spotify:track:x",
+            "spotify:album:x",
             "-o",
             str(tmp_path),
             "--cookies-from-browser",
@@ -63,25 +84,33 @@ def test_download_command_prints_the_result(monkeypatch, capsys, tmp_path):
     )
     assert code == 0
     assert asked == {
-        "link": "spotify:track:x",
+        "link": "spotify:album:x",
         "output": Path(tmp_path),
         "browser": "firefox",
     }
-    out = capsys.readouterr().out
-    assert "Artist - Song" in out
-    assert "https://www.youtube.com/watch?v=abc" in out
-    assert str(tmp_path / "Artist - Song.mp3") in out
 
 
-def test_download_command_reports_an_error(monkeypatch, capsys):
-    from tunehound import pipeline
+def test_download_command_prints_each_song_and_a_summary(monkeypatch, capsys):
+    fake_download_link(monkeypatch, ["downloaded", "skipped", "failed"])
+    assert main(["download", "spotify:album:x"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out.splitlines() == [
+        "[1/3] downloaded Artist - Song 1",
+        "[2/3] skipped    Artist - Song 2",
+        "3 songs: 1 downloaded, 1 skipped, 1 failed.",
+    ]
+    assert captured.err == "[3/3] failed     link3: found nothing\n"
 
-    def fake_download_track(link, output, cookies_from_browser=None):
-        raise pipeline.NoMatchError("found no result for Artist - Song")
 
-    monkeypatch.setattr(pipeline, "download_track", fake_download_track)
-    assert main(["download", "spotify:track:x"]) == 1
-    assert capsys.readouterr().err == "tunehound: found no result for Artist - Song\n"
+def test_download_command_succeeds_when_no_song_fails(monkeypatch, capsys):
+    fake_download_link(monkeypatch, ["downloaded", "skipped"])
+    assert main(["download", "spotify:album:x"]) == 0
+
+
+def test_summarize_says_song_for_one_song():
+    assert summarize(make_outcomes(["downloaded"])) == (
+        "1 song: 1 downloaded, 0 skipped, 0 failed."
+    )
 
 
 def test_download_command_refuses_a_bad_link(capsys):
