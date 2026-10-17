@@ -46,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="the audio format (default: mp3)",
     )
     download.add_argument(
+        "--lyrics",
+        action="store_true",
+        help="write the lyrics from lrclib.net into the tags",
+    )
+    download.add_argument(
         "--cookies-from-browser",
         metavar="BROWSER",
         help="use the YouTube sign-in of a browser, for example firefox",
@@ -89,6 +94,7 @@ def run_download(
     output: Path,
     cookies_from_browser: str | None,
     codec: str = DEFAULT_CODEC,
+    lyrics: bool = False,
 ) -> int:
     """Download the songs of a link and print what happened to each."""
     from tunehound import pipeline
@@ -100,6 +106,7 @@ def run_download(
             output,
             cookies_from_browser=cookies_from_browser,
             codec=codec,
+            lyrics=lyrics,
             on_outcome=_print_outcome,
             on_list=_print_list,
         )
@@ -129,6 +136,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_tui()
     if args.command == "download":
         return run_download(
-            args.link, args.output, args.cookies_from_browser, args.format
+            args.link,
+            args.output,
+            args.cookies_from_browser,
+            args.format,
+            args.lyrics,
         )
     parser.error(f"unknown command: {args.command}")

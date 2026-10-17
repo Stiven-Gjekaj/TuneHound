@@ -62,8 +62,9 @@ def make_steps(candidates, cover=b"\xff\xd8\xffcover", cover_error=None):
             raise cover_error
         return cover
 
-    def tag(path, track, cover_data):
+    def tag(path, track, cover_data, lyrics=None):
         calls["tag"] = (path, track, cover_data)
+        calls["lyrics"] = lyrics
 
     steps = {
         "fill": lambda track: track,
@@ -140,6 +141,7 @@ def fake_song_downloader(fail_links=()):
         fetch=None,
         direct=False,
         codec="mp3",
+        lyrics=False,
         album=None,
         track_number=None,
     ):
@@ -348,3 +350,37 @@ def test_download_track_does_not_fill_a_direct_track(tmp_path):
     steps, _ = make_steps([])
     steps["fill"] = lambda track: pytest.fail("a direct track must not be filled")
     download_track("link", tmp_path, direct=True, **steps)
+
+
+def test_download_track_adds_lyrics_only_when_asked(tmp_path):
+    steps, calls = make_steps([GOOD])
+    steps["find_lyrics"] = lambda track: "made-up text"
+    download_track("link", tmp_path, **steps)
+    assert calls["lyrics"] is None
+    download_track("link", tmp_path / "again", lyrics=True, **steps)
+    assert calls["lyrics"] == "made-up text"
+
+
+def test_download_track_keeps_going_when_the_lyrics_fail(tmp_path):
+    steps, calls = make_steps([GOOD])
+
+    def find_lyrics(track):
+        raise OSError("offline")
+
+    steps["find_lyrics"] = find_lyrics
+    result = download_track("link", tmp_path, lyrics=True, **steps)
+    assert calls["lyrics"] is None
+    assert result.skipped is False
+
+
+def test_download_link_passes_the_lyrics_option(tmp_path):
+    seen = []
+
+    def download_song(link, output_dir, **options):
+        seen.append(options["lyrics"])
+        return Result(track=TRACK, match=None, path=output_dir / "x.mp3")
+
+    download_link(
+        "x", tmp_path, lyrics=True, find=fake_find(), download_song=download_song
+    )
+    assert seen == [True]

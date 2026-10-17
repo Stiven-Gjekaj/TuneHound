@@ -61,12 +61,17 @@ def fake_download_link(monkeypatch, statuses, asked=None):
         output,
         cookies_from_browser=None,
         codec="mp3",
+        lyrics=False,
         on_outcome=None,
         on_list=None,
     ):
         if asked is not None:
             asked.update(
-                link=link, output=output, browser=cookies_from_browser, codec=codec
+                link=link,
+                output=output,
+                browser=cookies_from_browser,
+                codec=codec,
+                lyrics=lyrics,
             )
         outcomes = make_outcomes(statuses)
         for index, outcome in enumerate(outcomes, start=1):
@@ -97,6 +102,7 @@ def test_download_command_passes_the_options(monkeypatch, tmp_path):
         "output": Path(tmp_path),
         "browser": "firefox",
         "codec": "mp3",
+        "lyrics": False,
     }
 
 
@@ -137,6 +143,7 @@ def test_download_command_warns_about_a_list_that_can_be_cut(monkeypatch, capsys
         output,
         cookies_from_browser=None,
         codec="mp3",
+        lyrics=False,
         on_outcome=None,
         on_list=None,
     ):
@@ -175,3 +182,10 @@ def test_download_command_refuses_an_unknown_format(capsys):
     with pytest.raises(SystemExit) as exit_info:
         main(["download", "x", "--format", "wav"])
     assert exit_info.value.code == 2
+
+
+def test_download_command_passes_the_lyrics_option(monkeypatch):
+    asked = {}
+    fake_download_link(monkeypatch, [], asked)
+    main(["download", "x", "--lyrics"])
+    assert asked["lyrics"] is True

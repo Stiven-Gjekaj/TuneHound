@@ -9,6 +9,7 @@ from pathlib import Path
 from tunehound import http
 from tunehound.download import DEFAULT_CODEC, DownloadError, download_audio
 from tunehound.enrich import enrich
+from tunehound.lyrics import fetch_lyrics
 from tunehound.matching import Candidate, best_match
 from tunehound.providers import Provider, ProviderError, TrackList, find_provider
 from tunehound.search import search_youtube
@@ -50,6 +51,15 @@ def _fetch_cover(url: str | None, get_bytes: Callable[[str], bytes]) -> bytes | 
     return data
 
 
+def _find_lyrics(
+    track: Track, find_lyrics: Callable[[Track], str | None]
+) -> str | None:
+    try:
+        return find_lyrics(track)
+    except (OSError, ValueError):
+        return None
+
+
 def download_track(
     link: str,
     output_dir: Path,
@@ -58,12 +68,14 @@ def download_track(
     search: Callable[[Track], list[Candidate]] = search_youtube,
     download: Callable[..., Path] = download_audio,
     get_bytes: Callable[[str], bytes] = http.get_bytes,
-    tag: Callable[[Path, Track, bytes | None], None] = write_tags,
+    tag: Callable[..., None] = write_tags,
     album: str | None = None,
     track_number: int | None = None,
     direct: bool = False,
     codec: str = DEFAULT_CODEC,
     fill: Callable[[Track], Track] = enrich,
+    lyrics: bool = False,
+    find_lyrics: Callable[[Track], str | None] = fetch_lyrics,
 ) -> Result:
     """Read the track of a link, find it, download it, and tag it.
 
@@ -93,7 +105,8 @@ def download_track(
             raise NoMatchError(f"found no result for {track.artist} - {track.title}")
         url = match.url
     path = download(url, stem, codec=codec, cookies_from_browser=cookies_from_browser)
-    tag(path, track, _fetch_cover(track.cover_url, get_bytes))
+    text = _find_lyrics(track, find_lyrics) if lyrics else None
+    tag(path, track, _fetch_cover(track.cover_url, get_bytes), text)
     return Result(track=track, match=match, path=path)
 
 
@@ -124,6 +137,7 @@ def download_link(
     output_dir: Path,
     cookies_from_browser: str | None = None,
     codec: str = DEFAULT_CODEC,
+    lyrics: bool = False,
     on_outcome: OutcomeHook | None = None,
     on_list: Callable[[TrackList], None] | None = None,
     find: Callable[[str], Provider] = find_provider,
@@ -156,6 +170,7 @@ def download_link(
                 fetch=provider.fetch_track,
                 direct=getattr(provider, "direct", False),
                 codec=codec,
+                lyrics=lyrics,
                 album=album,
                 track_number=number,
             )
