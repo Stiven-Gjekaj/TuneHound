@@ -7,6 +7,24 @@ number, and a change that breaks the command line or the file names raises
 the major number.
 Each release on GitHub has the wheel and the source archive as assets.
 
+## 1.1.1 (2026-10-17)
+
+Better matches. In a test with 6 playlists, these fixes found 31 more of
+281 songs, and 264 came through in all.
+
+- TuneHound installs the YouTube challenge solver of yt-dlp, with the
+  `yt-dlp[default]` extra. Without it, YouTube gave no audio formats when
+  the request had a browser sign-in.
+- A remix, a cover, or a slowed version on a channel of one of the artists
+  of the track is the song itself, so TuneHound accepts it. Every artist of
+  the track counts, not only the first.
+- When a YouTube search gives no results, TuneHound searches again with the
+  title first, and then with the title alone. YouTube gave no results for
+  some search texts that start with a rare artist name.
+- A result may differ from the track by 15 seconds at most, not 30. In the
+  test, the right songs were within 8 seconds, and the wrong versions were
+  21 to 29 seconds away.
+
 ## 1.1.0 (2026-10-17)
 
 Full Spotify playlists.
