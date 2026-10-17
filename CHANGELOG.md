@@ -7,6 +7,22 @@ number, and a change that breaks the command line or the file names raises
 the major number.
 Each release on GitHub has the wheel and the source archive as assets.
 
+## 0.5.0 (2026-10-17)
+
+The terminal user interface downloads.
+
+- `tunehound tui` downloads each link or search that you paste, at once.
+  Up to three links run at the same time.
+- Each row shows "searching", then the progress in percent, then the
+  result. An album or a playlist gets one row for the list, with a count,
+  and one row for each song.
+- The status line counts the waiting, active, done, and failed rows, and
+  shows the last error.
+- `tunehound tui` takes the same options as `download`: `-o`, `--format`,
+  `--lyrics`, and `--cookies-from-browser`.
+- The columns of the queue fit the width of the screen. Before, a long link
+  pushed the status out of the screen.
+
 ## 0.4.0 (2026-10-17)
 
 Formats and full tags.
