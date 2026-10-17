@@ -7,6 +7,26 @@ number, and a change that breaks the command line or the file names raises
 the major number.
 Each release on GitHub has the wheel and the source archive as assets.
 
+## 1.0.0 (2026-10-17)
+
+The first full release. TuneHound is a command line tool only.
+
+- The terminal user interface is gone, with the `tui` command and the
+  Textual dependency. Use `tunehound download`.
+- `--template` sets the path of each file, for example
+  `"{artist}/{album}/{track_number:02} {title}"`. A slash makes a folder. A
+  bad template stops the command before a download starts.
+- A TOML configuration file holds the defaults: `output`, `format`,
+  `lyrics`, `template`, and `cookies_from_browser`. `tunehound config` shows
+  its path and its values. `--config FILE` and `TUNEHOUND_CONFIG` give
+  another path. A value on the command line wins.
+- `--no-lyrics` turns off the lyrics of the configuration file for one
+  command.
+- Install with `uv tool install` or `pipx install` from GitHub.
+- The hand check in [docs/roadmap.md](docs/roadmap.md) passed for Spotify,
+  Apple Music, SoundCloud, Bandcamp, and YouTube links. The Deezer and
+  search downloads stopped at the YouTube sign-in check on the test machine.
+
 ## 0.5.0 (2026-10-17)
 
 The terminal user interface downloads.
