@@ -7,6 +7,21 @@ number, and a change that breaks the command line or the file names raises
 the major number.
 Each release on GitHub has the wheel and the source archive as assets.
 
+## 0.4.0 (2026-10-17)
+
+Formats and full tags.
+
+- `--format` chooses mp3, m4a, opus, or flac. Each format gets its own tags
+  and the cover. A file of a different format does not count as already
+  there.
+- When a track has no album, no track number, or no ISRC, TuneHound fills
+  them from Deezer. It uses the ISRC when the track has one. It fills
+  nothing when no Deezer result has the same release date, because Deezer
+  search often gives a compilation and not the original.
+- `--lyrics` writes the lyrics from lrclib.net into the tags. A song with no
+  lyrics there, or a lyrics stub of fewer than 20 characters, gets no
+  lyrics. A failed lyrics request does not stop the song.
+
 ## 0.3.0 (2026-10-17)
 
 More providers.
