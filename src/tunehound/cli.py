@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from tunehound import __version__
-from tunehound.config import ConfigError, default_path, load
+from tunehound.config import ConfigError, default_path, load, shown, spotify_keys
 from tunehound.download import CODECS, DEFAULT_CODEC
 from tunehound.naming import DEFAULT_TEMPLATE, FIELDS, TemplateError, check_template
 
@@ -168,7 +168,12 @@ def run_config(path: Path, values: dict) -> int:
     state = "found" if path.is_file() else "not found, so TuneHound uses the defaults"
     print(f"{path} ({state})")
     for key, value in values.items():
-        print(f"  {key} = {value}")
+        print(f"  {key} = {shown(key, value)}")
+    keys = spotify_keys(values)
+    if keys is None:
+        print("Spotify: the embed page, with at most 100 songs of a playlist")
+    else:
+        print("Spotify: the Web API, with the full lists")
     return 0
 
 
@@ -182,9 +187,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     path = known.config or default_path()
     try:
         values = load(path)
+        keys = spotify_keys(values)
     except ConfigError as error:
         print(f"tunehound: {error}", file=sys.stderr)
         return 2
+    if keys is not None:
+        from tunehound.providers import use_spotify_api
+
+        use_spotify_api(*keys)
     if known.config is not None and not path.is_file():
         print(
             f"tunehound: the configuration file {path} does not exist", file=sys.stderr

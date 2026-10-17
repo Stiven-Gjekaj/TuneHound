@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from tunehound.config import ConfigError, default_path, load
+from tunehound.config import ConfigError, default_path, load, shown, spotify_keys
 
 
 def write(tmp_path, text):
@@ -76,3 +76,42 @@ def test_default_path_uses_appdata_on_windows(monkeypatch, tmp_path):
     monkeypatch.setattr("sys.platform", "win32")
     monkeypatch.setenv("APPDATA", str(tmp_path))
     assert default_path() == Path(tmp_path) / "tunehound" / "config.toml"
+
+
+@pytest.fixture
+def no_spotify_environment(monkeypatch):
+    monkeypatch.delenv("TUNEHOUND_SPOTIFY_CLIENT_ID", raising=False)
+    monkeypatch.delenv("TUNEHOUND_SPOTIFY_CLIENT_SECRET", raising=False)
+
+
+def test_load_reads_the_spotify_keys(tmp_path):
+    path = write(
+        tmp_path, 'spotify_client_id = " abc "\nspotify_client_secret = "xyz"\n'
+    )
+    assert load(path) == {"spotify_client_id": "abc", "spotify_client_secret": "xyz"}
+
+
+def test_spotify_keys_come_from_the_file(no_spotify_environment):
+    values = {"spotify_client_id": "abc", "spotify_client_secret": "xyz"}
+    assert spotify_keys(values) == ("abc", "xyz")
+
+
+def test_spotify_keys_from_the_environment_win(monkeypatch):
+    monkeypatch.setenv("TUNEHOUND_SPOTIFY_CLIENT_ID", "env-id")
+    monkeypatch.setenv("TUNEHOUND_SPOTIFY_CLIENT_SECRET", "env-secret")
+    values = {"spotify_client_id": "abc", "spotify_client_secret": "xyz"}
+    assert spotify_keys(values) == ("env-id", "env-secret")
+
+
+def test_spotify_keys_are_none_when_there_are_none(no_spotify_environment):
+    assert spotify_keys({}) is None
+
+
+def test_spotify_keys_need_both_keys(no_spotify_environment):
+    with pytest.raises(ConfigError, match="give both"):
+        spotify_keys({"spotify_client_id": "abc"})
+
+
+def test_shown_hides_the_secret():
+    assert shown("spotify_client_secret", "xyz") == "(hidden)"
+    assert shown("spotify_client_id", "abc") == "abc"

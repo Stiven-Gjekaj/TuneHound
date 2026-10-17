@@ -213,6 +213,8 @@ def no_user_config(monkeypatch, tmp_path_factory):
     """Keep the configuration file of the user out of every test."""
     folder = tmp_path_factory.mktemp("config")
     monkeypatch.setenv("TUNEHOUND_CONFIG", str(folder / "none.toml"))
+    monkeypatch.delenv("TUNEHOUND_SPOTIFY_CLIENT_ID", raising=False)
+    monkeypatch.delenv("TUNEHOUND_SPOTIFY_CLIENT_SECRET", raising=False)
     return folder
 
 
@@ -268,7 +270,11 @@ def test_config_command_shows_the_path_and_the_values(tmp_path, capsys, monkeypa
     monkeypatch.setenv("TUNEHOUND_CONFIG", str(config))
     assert main(["config"]) == 0
     out = capsys.readouterr().out.splitlines()
-    assert out == [f"{config} (found)", "  format = flac"]
+    assert out == [
+        f"{config} (found)",
+        "  format = flac",
+        "Spotify: the embed page, with at most 100 songs of a playlist",
+    ]
 
 
 def test_config_command_says_when_there_is_no_file(capsys, no_user_config):
@@ -276,3 +282,26 @@ def test_config_command_says_when_there_is_no_file(capsys, no_user_config):
     out = capsys.readouterr().out
     assert "not found" in out
     assert str(no_user_config / "none.toml") in out
+
+
+def test_spotify_keys_turn_on_the_web_api(monkeypatch, tmp_path, capsys):
+    from tunehound import providers
+    from tunehound.providers.spotify import SpotifyProvider
+
+    [spotify] = [p for p in providers.PROVIDERS if isinstance(p, SpotifyProvider)]
+    monkeypatch.setattr(spotify, "api", None)
+    config = tmp_path / "config.toml"
+    config.write_text('spotify_client_id = "abc"\nspotify_client_secret = "xyz"\n')
+    assert main(["--config", str(config), "config"]) == 0
+    out = capsys.readouterr().out
+    assert "spotify_client_secret = (hidden)" in out
+    assert "xyz" not in out
+    assert "Spotify: the Web API" in out
+    assert spotify.api is not None
+
+
+def test_one_spotify_key_alone_stops_the_command(tmp_path, capsys):
+    config = tmp_path / "config.toml"
+    config.write_text('spotify_client_id = "abc"\n')
+    assert main(["--config", str(config), "config"]) == 2
+    assert "give both" in capsys.readouterr().err
