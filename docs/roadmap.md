@@ -31,9 +31,12 @@ This file tells what each release adds, up to 1.0.0.
 
 - The formats mp3, m4a, opus, and flac, each with its own tags.
 - Find the album, the track number, the disc number, and the ISRC on Deezer
-  when the provider does not give them.
-- Use the ISRC to make the match more certain.
+  when the provider does not give them. Use the ISRC for this when the track
+  has one. Fill nothing when no Deezer result has the same release date,
+  because Deezer search often gives a compilation and not the original.
 - Write the lyrics from lrclib.net when the user asks for them.
+- Not done: the ISRC does not help the match on YouTube, because the YouTube
+  search results do not give an ISRC.
 
 ## 0.5.0: the terminal user interface downloads
 
