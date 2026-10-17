@@ -25,6 +25,12 @@ _Paste a link. TuneHound finds the song, downloads it, and tags it._
 
 ---
 
+> [!NOTE]
+> **Version 0.1.0 is out.**
+> It downloads one song from a Spotify track link and tags it.
+> [Install](#install) says how to get it, and
+> [the roadmap](docs/roadmap.md) says what comes next.
+
 ## Overview
 
 TuneHound downloads music from many providers.
@@ -40,6 +46,12 @@ TuneHound does not decrypt DRM streams.
 - Python 3.11 or later
 - [uv](https://docs.astral.sh/uv/)
 - [ffmpeg](https://ffmpeg.org/) on your `PATH`
+
+## Install
+
+    uv tool install git+https://github.com/Stiven-Gjekaj/TuneHound@v0.1.0
+
+Then run `tunehound` with no `uv run` in front.
 
 ## Install for development
 
