@@ -58,11 +58,13 @@ def download_track(
     tag: Callable[[Path, Track, bytes | None], None] = write_tags,
     album: str | None = None,
     track_number: int | None = None,
+    direct: bool = False,
 ) -> Result:
     """Read the track of a link, find it, download it, and tag it.
 
     When the audio file of the track is already in the folder, do not
-    search or download again.
+    search or download again. When `direct` is true, the link already points
+    at the audio, so download its source with no search.
     """
     if fetch is None:
         fetch = find_provider(link).fetch_track
@@ -75,10 +77,15 @@ def download_track(
     existing = stem.with_name(f"{stem.name}.mp3")
     if existing.is_file():
         return Result(track=track, match=None, path=existing, skipped=True)
-    match = best_match(track, search(track))
-    if match is None:
-        raise NoMatchError(f"found no result for {track.artist} - {track.title}")
-    path = download(match.url, stem, cookies_from_browser=cookies_from_browser)
+    if direct:
+        match = None
+        url = track.source_url
+    else:
+        match = best_match(track, search(track))
+        if match is None:
+            raise NoMatchError(f"found no result for {track.artist} - {track.title}")
+        url = match.url
+    path = download(url, stem, cookies_from_browser=cookies_from_browser)
     tag(path, track, _fetch_cover(track.cover_url, get_bytes))
     return Result(track=track, match=match, path=path)
 
@@ -139,6 +146,7 @@ def download_link(
                 output_dir,
                 cookies_from_browser=cookies_from_browser,
                 fetch=provider.fetch_track,
+                direct=getattr(provider, "direct", False),
                 album=album,
                 track_number=number,
             )

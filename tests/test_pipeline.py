@@ -135,6 +135,7 @@ def fake_song_downloader(fail_links=()):
         output_dir,
         cookies_from_browser=None,
         fetch=None,
+        direct=False,
         album=None,
         track_number=None,
     ):
@@ -264,3 +265,31 @@ def test_download_track_keeps_the_album_and_number_of_the_provider(tmp_path):
     )
     assert result.track.album == "Disc Album"
     assert result.track.track_number == 2
+
+
+def test_download_track_downloads_a_direct_link_with_no_search(tmp_path):
+    steps, calls = make_steps([])
+    steps["search"] = lambda track: pytest.fail("a direct link must not search")
+    result = download_track("link", tmp_path, direct=True, **steps)
+    assert calls["download"][0] == TRACK.source_url
+    assert result.match is None
+    assert result.skipped is False
+
+
+def test_download_link_tells_the_song_downloader_about_a_direct_provider(tmp_path):
+    seen = []
+
+    class Direct(FakeProvider):
+        direct = True
+
+    def download_song(link, output_dir, **options):
+        seen.append(options["direct"])
+        return Result(track=TRACK, match=None, path=output_dir / "x.mp3")
+
+    download_link(
+        "x", tmp_path, find=lambda link: Direct(), download_song=download_song
+    )
+    download_link(
+        "x", tmp_path, find=lambda link: FakeProvider(), download_song=download_song
+    )
+    assert seen == [True, False]

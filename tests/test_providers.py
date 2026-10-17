@@ -42,3 +42,15 @@ def test_find_provider_sends_a_plain_text_to_the_search():
 def test_find_provider_still_refuses_an_unknown_link():
     with pytest.raises(ProviderError):
         find_provider("https://example.com/song")
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        "https://www.youtube.com/watch?v=abc",
+        "https://soundcloud.com/artist/song",
+        "https://artist.bandcamp.com/track/song",
+    ],
+)
+def test_find_provider_sends_yt_dlp_links_to_the_direct_provider(link):
+    assert find_provider(link).name == "direct"

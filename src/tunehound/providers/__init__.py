@@ -3,6 +3,7 @@
 from tunehound.providers.apple import AppleMusicProvider
 from tunehound.providers.base import Provider, ProviderError, TrackList
 from tunehound.providers.deezer import DeezerProvider
+from tunehound.providers.direct import DirectProvider
 from tunehound.providers.spotify import SpotifyProvider
 from tunehound.providers.text import TextSearchProvider
 
@@ -10,6 +11,7 @@ PROVIDERS: tuple[Provider, ...] = (
     SpotifyProvider(),
     DeezerProvider(),
     AppleMusicProvider(),
+    DirectProvider(),
     # The search goes last, because it owns every text that is not a link.
     TextSearchProvider(),
 )
