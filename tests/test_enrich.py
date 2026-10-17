@@ -18,7 +18,7 @@ def deezer_track(**changes):
         "track_position": 3,
         "disk_number": 1,
         "isrc": "GBXXX0000001",
-        "release_date": "2004-01-12",
+        "release_date": "1987-11-12",
         "artist": {"name": "Main"},
         "album": {"title": "An Album", "cover_xl": "https://img.invalid/1000"},
     }
@@ -137,13 +137,23 @@ def test_find_on_deezer_prefers_the_result_with_the_same_release_date():
     assert find_on_deezer(BARE, get_json).album == "Original"
 
 
-def test_find_on_deezer_takes_the_first_match_when_no_date_agrees():
+def test_find_on_deezer_gives_none_when_no_date_agrees():
     def get_json(url):
         if "search" in url:
             return search_answer(item(1), item(2))
         track_id = int(url.rsplit("/", 1)[1])
-        return deezer_track(
-            id=track_id, release_date="2010-01-01", album={"title": f"A{track_id}"}
-        )
+        return deezer_track(id=track_id, release_date="2010-01-01")
 
-    assert find_on_deezer(BARE, get_json).album == "A1"
+    assert find_on_deezer(BARE, get_json) is None
+
+
+def test_find_on_deezer_takes_the_first_match_without_a_release_date():
+    bare = Track("A Song", ("Main",), 211500, "x")
+
+    def get_json(url):
+        if "search" in url:
+            return search_answer(item(1), item(2))
+        track_id = int(url.rsplit("/", 1)[1])
+        return deezer_track(id=track_id, album={"title": f"A{track_id}"})
+
+    assert find_on_deezer(bare, get_json).album == "A1"
