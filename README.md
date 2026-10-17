@@ -84,6 +84,13 @@ The same command takes links of other providers, and plain search text:
 
 TuneHound finds a search text on Deezer and takes the first song.
 
+Choose the audio format, and add the lyrics from lrclib.net:
+
+    uv run tunehound download LINK --format flac --lyrics
+
+The formats are mp3 (the default), m4a, opus, and flac. Each format gets
+its own tags and the cover.
+
 Put the files in a different folder:
 
     uv run tunehound download LINK -o ~/Music
@@ -120,14 +127,15 @@ queue to close the app.
 | SoundCloud | yes | no | yes | no |
 | Bandcamp | yes | yes | no | no |
 
-- Tags: the title, the artists, the release date, the cover, and the link of
-  the source. Deezer and Apple Music also give the album, the track number,
-  and the disc number, and Deezer gives the ISRC. A Spotify song from an
-  album link gets the album and the track number.
+- Tags: the title, the artists, the album, the track and disc numbers, the
+  release date, the ISRC, the cover, and the link of the source, when the
+  provider gives them. When a Spotify or Apple Music track has no album or
+  ISRC, TuneHound fills them from Deezer, but only from a Deezer result with
+  the same release date. Lyrics come from lrclib.net with `--lyrics`.
 - Lists: the Spotify embed page gave 100 songs at most for a playlist in a
   test. TuneHound warns when a Spotify playlist has 100 songs, because songs
   can be missing.
-- Format: mp3.
+- Formats: mp3, m4a, opus, and flac.
 - Match: TuneHound searches YouTube and scores each result by the title, the
   artist, the length, and the channel. It refuses a live version, a remix, or
   a cover when the track is not one. YouTube Music search gives no songs in
