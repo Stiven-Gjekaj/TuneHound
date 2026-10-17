@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.geometry import Size
 from textual.message import Message
 from textual.widgets import DataTable, Footer, Input, Static
 
@@ -17,6 +18,9 @@ from tunehound.download import DEFAULT_CODEC
 from tunehound.providers import ProviderError
 
 MAX_PARALLEL = 3
+# The widths of the narrow columns. The title column takes the rest.
+FIXED_WIDTHS = {"artist": 24, "source": 22, "status": 12}
+MIN_TITLE_WIDTH = 20
 DONE_STATES = ("downloaded", "skipped")
 
 
@@ -111,7 +115,28 @@ class TuneHoundApp(App[None]):
         table = self.query_one("#queue", DataTable)
         for label in ("Title", "Artist", "Source", "Status"):
             table.add_column(label, key=label.lower())
+        # The table has its real width only after the first layout.
+        self.call_after_refresh(self.fit_columns)
         self.update_status()
+
+    def on_resize(self) -> None:
+        self.call_after_refresh(self.fit_columns)
+
+    def fit_columns(self) -> None:
+        """Give each column a fixed width, so that a long link cannot push
+        the status out of the screen."""
+        table = self.query_one("#queue", DataTable)
+        width = table.size.width or self.size.width
+        padding = 2 * table.cell_padding * len(table.columns)
+        title = max(MIN_TITLE_WIDTH, width - sum(FIXED_WIDTHS.values()) - padding)
+        for key, column in table.columns.items():
+            column.auto_width = False
+            column.width = FIXED_WIDTHS.get(key.value, title)
+        # Rows that came before this fit keep the old scroll width, so set
+        # the width again from the new columns.
+        total = sum(column.get_render_width(table) for column in table.columns.values())
+        table.virtual_size = Size(total, table.virtual_size.height)
+        table.refresh()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         link = event.value.strip()

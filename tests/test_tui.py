@@ -248,3 +248,16 @@ def test_tui_command_passes_the_options_to_the_app(monkeypatch, tmp_path):
     [app] = opened
     assert app.output_dir == tmp_path
     assert (app.codec, app.lyrics, app.cookies_from_browser) == ("opus", True, "chrome")
+
+
+async def test_the_columns_fit_the_screen_after_a_long_link():
+    app = TuneHoundApp(download_link=song_download)
+    async with app.run_test(size=(100, 30)) as pilot:
+        await submit(app, pilot, "https://open.spotify.com/track/" + "a" * 70)
+        await pilot.pause()
+        table = app.query_one("#queue", DataTable)
+        widths = {key.value: column.width for key, column in table.columns.items()}
+        assert widths["status"] == 12
+        padding = 2 * table.cell_padding * len(widths)
+        assert sum(widths.values()) + padding <= table.size.width
+        assert table.virtual_size.width <= table.size.width
