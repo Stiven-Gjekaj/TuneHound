@@ -91,15 +91,34 @@ def score(track: Track, candidate: Candidate) -> float | None:
     )
 
     channel = normalize(candidate.channel)
-    artist = normalize(track.artists[0])
-    if channel == f"{artist} topic":
+    artists = [normalize(artist) for artist in track.artists]
+    if any(channel == f"{artist} topic" for artist in artists):
         total += TOPIC_BONUS
-    elif channel in (artist, f"{artist} vevo", f"{artist}vevo"):
+    elif is_artist_channel(channel, artists):
         total += ARTIST_CHANNEL_BONUS
+    else:
+        # On a channel of the artist, a word such as "remix" or "slowed"
+        # names the song itself, so it does not make a different version.
+        track_words = set(_words(track.title))
+        other_words = OTHER_VERSION_WORDS & set(_words(candidate.title)) - track_words
+        total -= OTHER_VERSION_PENALTY * len(other_words)
+    return total
 
-    track_words = set(_words(track.title))
-    other_words = OTHER_VERSION_WORDS & set(_words(candidate.title)) - track_words
-    return total - OTHER_VERSION_PENALTY * len(other_words)
+
+def is_artist_channel(channel: str, artists: list[str]) -> bool:
+    """Tell if a normalized channel name is the channel of one of the artists."""
+    names = set()
+    for artist in artists:
+        names |= {
+            artist,
+            artist.replace(" ", ""),
+            f"{artist} topic",
+            f"{artist} vevo",
+            f"{artist}vevo",
+            f"{artist} official",
+            f"{artist} music",
+        }
+    return channel in names
 
 
 def best_match(track: Track, candidates: list[Candidate]) -> Candidate | None:

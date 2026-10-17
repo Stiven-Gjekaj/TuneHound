@@ -109,3 +109,50 @@ def test_best_match_keeps_the_earlier_result_in_a_tie():
     first = make_candidate("Kevin MacLeod - Monkeys Spinning Monkeys", video_id="1")
     second = make_candidate("Kevin MacLeod - Monkeys Spinning Monkeys", video_id="2")
     assert best_match(make_track(), [first, second]).video_id == "1"
+
+
+def test_score_keeps_a_remix_on_the_channel_of_the_artist():
+    track = make_track(title="Not a slacker anymore", artist="Hiro", seconds=313)
+    own = make_candidate(
+        'Last Breath - "Not A Slacker Anymore" HIRO Remix', "Hiro", 313
+    )
+    assert score(track, own) >= 0.6
+    assert best_match(track, [own]) == own
+
+
+def test_score_still_lowers_a_remix_on_another_channel():
+    track = make_track(title="Not a slacker anymore", artist="Hiro", seconds=313)
+    other = make_candidate('"Not A Slacker Anymore" HIRO Remix', "Fan Uploads", 313)
+    own = make_candidate('"Not A Slacker Anymore" HIRO Remix', "Hiro", 313)
+    assert score(track, other) < score(track, own) - 0.4
+
+
+def test_score_knows_the_channel_of_any_artist_of_the_track():
+    track = Track(
+        title="Spider Dance",
+        artists=("Holder", "GameChops"),
+        duration_ms=180000,
+        source_url="x",
+    )
+    own = make_candidate(
+        "Undertale Remixed - Spider Dance - Holder Remix", "GameChops", 181
+    )
+    assert best_match(track, [own]) == own
+
+
+@pytest.mark.parametrize(
+    "channel",
+    ["SharaX Official", "SharaX - Topic", "SharaXVEVO", "Shara X", "sharax music"],
+)
+def test_is_artist_channel_knows_the_forms_of_a_channel_name(channel):
+    from tunehound.matching import is_artist_channel
+
+    assert is_artist_channel(normalize(channel), ["sharax"]) or is_artist_channel(
+        normalize(channel), ["shara x"]
+    )
+
+
+def test_is_artist_channel_refuses_another_channel():
+    from tunehound.matching import is_artist_channel
+
+    assert not is_artist_channel("lyrics hub", ["sharax"])
