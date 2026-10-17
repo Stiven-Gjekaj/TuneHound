@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 756 180" width="756" height="180" role="img" aria-label="TuneHound">
+  <title>TuneHound</title>
+
+  <defs>
+    <!-- Cold cyan through blue and violet to a warm pink. The shift runs
+         along the word, so the trail gets warmer as the hound closes in. -->
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="0.35">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.4" stop-color="#60a5fa"/>
+      <stop offset="0.72" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#f472b6"/>
+    </linearGradient>
+
+    <filter id="glow" x="-20%" y="-40%" width="140%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- One scanline, tiled. A rule drawn per line would be a hundred
+         elements that all say the same thing. -->
+    <pattern id="scanlines" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="2" fill="#000" opacity="0.28"/>
+    </pattern>
+  </defs>
+
+  <rect width="756" height="180" rx="16" fill="#070b14"/>
+  <rect x="6" y="6" width="744" height="168" rx="11"
+        fill="none" stroke="#22d3ee" stroke-opacity="0.28" stroke-width="2"/>
+
+  <g filter="url(#glow)">
+    <!-- A pixel hound head that faces the word. The ear hangs at the left,
+         the muzzle points right, and the eye is a hole in the path, so the
+         panel colour shows through it. The nose takes the warm end colour. -->
+    <g transform="translate(34 52)">
+      <path d="M35 0h28v7h-28zM28 7h42v7h-42zM14 14h84v7h-84zM7 21h49v7h-49zM63 21h49v7h-49zM7 28h91v7h-91zM0 35h98v7h-98zM0 42h28v7h-28zM35 42h70v7h-70zM0 49h28v7h-28zM42 49h63v7h-63zM7 56h21v7h-21zM49 56h49v7h-49zM7 63h21v7h-21zM56 63h35v7h-35zM14 70h7v7h-7zM63 70h14v7h-14z" fill="#22d3ee" opacity="0.9"/>
+      <path d="M98 28h14v7h-14zM98 35h14v7h-14z" fill="#f472b6" opacity="0.9"/>
+    </g>
+    <!-- The word is a set of pixel paths, not text. GitHub strips external
+         fonts, so a path renders the same everywhere. -->
+    <path d="M0 0h45v9h-45zM216 0h9v9h-9zM252 0h9v9h-9zM468 0h9v9h-9zM18 9h9v9h-9zM216 9h9v9h-9zM252 9h9v9h-9zM468 9h9v9h-9zM18 18h9v9h-9zM54 18h9v9h-9zM90 18h9v9h-9zM108 18h9v9h-9zM126 18h18v9h-18zM171 18h27v9h-27zM216 18h9v9h-9zM252 18h9v9h-9zM279 18h27v9h-27zM324 18h9v9h-9zM360 18h9v9h-9zM378 18h9v9h-9zM396 18h18v9h-18zM441 18h36v9h-36zM18 27h9v9h-9zM54 27h9v9h-9zM90 27h9v9h-9zM108 27h18v9h-18zM144 27h9v9h-9zM162 27h9v9h-9zM198 27h9v9h-9zM216 27h45v9h-45zM270 27h9v9h-9zM306 27h9v9h-9zM324 27h9v9h-9zM360 27h9v9h-9zM378 27h18v9h-18zM414 27h9v9h-9zM432 27h9v9h-9zM468 27h9v9h-9zM18 36h9v9h-9zM54 36h9v9h-9zM90 36h9v9h-9zM108 36h9v9h-9zM144 36h9v9h-9zM162 36h45v9h-45zM216 36h9v9h-9zM252 36h9v9h-9zM270 36h9v9h-9zM306 36h9v9h-9zM324 36h9v9h-9zM360 36h9v9h-9zM378 36h9v9h-9zM414 36h9v9h-9zM432 36h9v9h-9zM468 36h9v9h-9zM18 45h9v9h-9zM54 45h9v9h-9zM81 45h18v9h-18zM108 45h9v9h-9zM144 45h9v9h-9zM162 45h9v9h-9zM216 45h9v9h-9zM252 45h9v9h-9zM270 45h9v9h-9zM306 45h9v9h-9zM324 45h9v9h-9zM351 45h18v9h-18zM378 45h9v9h-9zM414 45h9v9h-9zM432 45h9v9h-9zM468 45h9v9h-9zM18 54h9v9h-9zM63 54h18v9h-18zM90 54h9v9h-9zM108 54h9v9h-9zM144 54h9v9h-9zM171 54h36v9h-36zM216 54h9v9h-9zM252 54h9v9h-9zM279 54h27v9h-27zM333 54h18v9h-18zM360 54h9v9h-9zM378 54h9v9h-9zM414 54h9v9h-9zM441 54h36v9h-36z" fill="url(#ink)" transform="translate(160 58)"/>
+    <!-- Five sound bars. They move, so the hound has a sound to track.
+         The animation runs where SVG animation runs. Elsewhere, the first
+         value is a still bar chart. -->
+    <g fill="#f472b6" opacity="0.85">
+      <rect x="650" y="72" width="10" height="36">
+        <animate attributeName="y" values="72;60;84;72" dur="1.1s" repeatCount="indefinite"/>
+        <animate attributeName="height" values="36;60;12;36" dur="1.1s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="666" y="60" width="10" height="60">
+        <animate attributeName="y" values="60;78;54;60" dur="0.9s" repeatCount="indefinite"/>
+        <animate attributeName="height" values="60;24;72;60" dur="0.9s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="682" y="48" width="10" height="84">
+        <animate attributeName="y" values="48;66;48" dur="1.3s" repeatCount="indefinite"/>
+        <animate attributeName="height" values="84;48;84" dur="1.3s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="698" y="66" width="10" height="48">
+        <animate attributeName="y" values="66;54;80;66" dur="1.0s" repeatCount="indefinite"/>
+        <animate attributeName="height" values="48;72;20;48" dur="1.0s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="714" y="78" width="10" height="24">
+        <animate attributeName="y" values="78;64;84;78" dur="1.2s" repeatCount="indefinite"/>
+        <animate attributeName="height" values="24;52;12;24" dur="1.2s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+  </g>
+
+  <rect width="756" height="180" rx="16" fill="url(#scanlines)"
+        opacity="0.5" pointer-events="none"/>
+</svg>
