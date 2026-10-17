@@ -7,6 +7,23 @@ number, and a change that breaks the command line or the file names raises
 the major number.
 Each release on GitHub has the wheel and the source archive as assets.
 
+## 0.2.0 (2026-10-17)
+
+Albums and playlists.
+
+- `tunehound download` takes Spotify album and playlist links, and downloads
+  each song, one after the other.
+- A song from an album link gets the album name and the track number as
+  tags.
+- When the file of a song is already in the folder, TuneHound skips it. Run
+  the same command again to get the songs that failed.
+- One line for each song, and a summary at the end. The command exits with 1
+  when a song fails, and a failed song does not stop the other songs.
+- A warning when a list has 100 songs, because the Spotify embed page can cut
+  a list there.
+- The errors of yt-dlp are short. When YouTube asks for a sign-in, the error
+  says to use `--cookies-from-browser`.
+
 ## 0.1.0 (2026-10-17)
 
 The first release. One song from a Spotify link.
