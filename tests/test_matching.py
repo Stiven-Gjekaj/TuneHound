@@ -97,3 +97,15 @@ def test_best_match_gives_none_when_no_result_is_good():
 
 def test_best_match_gives_none_for_no_results():
     assert best_match(make_track(), []) is None
+
+
+def test_score_prefers_the_channel_of_the_artist_to_another_channel():
+    own = make_candidate("Monkeys Spinning Monkeys", channel="Kevin MacLeod")
+    other = make_candidate("Monkeys Spinning Monkeys", channel="Lyrics Channel")
+    assert score(make_track(), own) > score(make_track(), other)
+
+
+def test_best_match_keeps_the_earlier_result_in_a_tie():
+    first = make_candidate("Kevin MacLeod - Monkeys Spinning Monkeys", video_id="1")
+    second = make_candidate("Kevin MacLeod - Monkeys Spinning Monkeys", video_id="2")
+    assert best_match(make_track(), [first, second]).video_id == "1"

@@ -32,6 +32,7 @@ OTHER_VERSION_WORDS = frozenset(
 )
 OTHER_VERSION_PENALTY = 0.5
 TOPIC_BONUS = 0.1
+ARTIST_CHANNEL_BONUS = 0.05
 
 
 @dataclass(frozen=True)
@@ -90,8 +91,11 @@ def score(track: Track, candidate: Candidate) -> float | None:
     )
 
     channel = normalize(candidate.channel)
-    if channel == f"{normalize(track.artists[0])} topic":
+    artist = normalize(track.artists[0])
+    if channel == f"{artist} topic":
         total += TOPIC_BONUS
+    elif channel in (artist, f"{artist} vevo", f"{artist}vevo"):
+        total += ARTIST_CHANNEL_BONUS
 
     track_words = set(_words(track.title))
     other_words = OTHER_VERSION_WORDS & set(_words(candidate.title)) - track_words
@@ -99,11 +103,15 @@ def score(track: Track, candidate: Candidate) -> float | None:
 
 
 def best_match(track: Track, candidates: list[Candidate]) -> Candidate | None:
-    """Return the result that agrees best with a track, or None."""
+    """Return the result that agrees best with a track, or None.
+
+    When two results have the same score, the earlier result wins, because
+    the search puts the more popular result first.
+    """
     best: Candidate | None = None
-    best_score = MIN_SCORE
+    best_score = 0.0
     for candidate in candidates:
         value = score(track, candidate)
-        if value is not None and value >= best_score:
+        if value is not None and value >= MIN_SCORE and value > best_score:
             best, best_score = candidate, value
     return best
