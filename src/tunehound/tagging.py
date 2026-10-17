@@ -33,10 +33,7 @@ def image_mime(data: bytes) -> str:
     raise TaggingError("the cover is not a JPEG or a PNG image")
 
 
-def write_tags(path: Path, track: Track, cover: bytes | None = None) -> None:
-    """Write the tags of a track, and the cover if there is one, into a file."""
-    if path.suffix.lower() != ".mp3":
-        raise TaggingError(f"TuneHound cannot tag {path.suffix} files yet")
+def _write_id3(path: Path, track: Track, cover: bytes | None) -> None:
     try:
         tags = ID3(path)
     except ID3NoHeaderError:
@@ -66,3 +63,14 @@ def write_tags(path: Path, track: Track, cover: bytes | None = None) -> None:
             ],
         )
     tags.save(path, v2_version=4)
+
+
+_WRITERS = {".mp3": _write_id3}
+
+
+def write_tags(path: Path, track: Track, cover: bytes | None = None) -> None:
+    """Write the tags of a track, and the cover if there is one, into a file."""
+    writer = _WRITERS.get(path.suffix.lower())
+    if writer is None:
+        raise TaggingError(f"TuneHound cannot tag {path.suffix} files")
+    writer(path, track, cover)
