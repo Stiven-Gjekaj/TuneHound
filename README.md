@@ -7,7 +7,7 @@
 _Paste a link. TuneHound finds the song, downloads it, and tags it._
 
 ![Python](https://img.shields.io/badge/python_3.11+-22d3ee?style=for-the-badge&logo=python&logoColor=070b14)
-![Textual](https://img.shields.io/badge/textual-60a5fa?style=for-the-badge&logo=python&logoColor=070b14)
+![ffmpeg](https://img.shields.io/badge/ffmpeg-60a5fa?style=for-the-badge&logo=ffmpeg&logoColor=070b14)
 ![yt-dlp](https://img.shields.io/badge/yt--dlp-a78bfa?style=for-the-badge&logo=youtube&logoColor=070b14)
 ![Spotify](https://img.shields.io/badge/spotify-f472b6?style=for-the-badge&logo=spotify&logoColor=070b14)
 [![MIT licence](https://img.shields.io/badge/mit_licence-fce7f3?style=for-the-badge&logoColor=070b14)](LICENSE)
@@ -29,8 +29,7 @@ _Paste a link. TuneHound finds the song, downloads it, and tags it._
 > **Version 0.5.0 is out.**
 > It downloads songs, albums, and playlists from Spotify, Deezer, Apple
 > Music, YouTube, SoundCloud, and Bandcamp links, or from a search text, as
-> mp3, m4a, opus, or flac, with full tags and lyrics on request. The
-> terminal user interface downloads too.
+> mp3, m4a, opus, or flac, with full tags and lyrics on request.
 > [Install](#install) says how to get it, and
 > [the roadmap](docs/roadmap.md) says what comes next.
 
@@ -105,23 +104,6 @@ Then let yt-dlp use the YouTube sign-in of your browser:
 Show the help:
 
     uv run tunehound --help
-
-Open the terminal user interface:
-
-    uv run tunehound tui
-
-The `tui` command takes the same options as `download`, for example
-`-o ~/Music --format flac --lyrics`.
-
-![The main screen of TuneHound](assets/tui.svg)
-
-Paste a link or type a search and press Enter. TuneHound downloads it at
-once, and runs up to three links at the same time. Each row shows the
-progress and then the result. An album or a playlist gets one row for the
-list and one row for each song. The status line counts the rows and shows
-the last error.
-Press `esc` to go to the queue, `/` to go back to the link, and `q` in the
-queue to close the app.
 
 ## What works now
 

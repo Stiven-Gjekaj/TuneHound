@@ -40,12 +40,16 @@ This file tells what each release adds, up to 1.0.0.
 
 ## 0.5.0: the terminal user interface downloads
 
+Removed in 1.0.0. The owner chose to keep TuneHound a command line tool
+only.
+
 - The screen runs the downloads that the user pastes.
 - Each row shows its progress and its result.
 - Downloads run at the same time, with a limit.
 
 ## 1.0.0: ready for use
 
+- Remove the terminal user interface and the Textual dependency.
 - A configuration file for the output folder, the format, the file name
   template, and the browser for the sign-in.
 - Install with `uv tool install` or `pipx install` from GitHub.
