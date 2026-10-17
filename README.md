@@ -92,6 +92,18 @@ The same command takes links of other providers, and plain search text:
 
 TuneHound finds a search text on Deezer and takes the first song.
 
+Download many links from a text file, with one link or search text on each
+line. Empty lines and lines that start with `#` do not count:
+
+    uv run tunehound download --input links.txt
+
+This is the way to get a Spotify playlist of more than 100 songs with no
+Spotify keys. In the Spotify desktop app, open the playlist, press Cmd+A
+(Ctrl+A on Windows) to select every song, and press Cmd+C (Ctrl+C). The
+clipboard then holds one track link for each song. Paste them into
+`links.txt`. TuneHound reads each track link on its own, and a single track
+has no 100-song limit.
+
 Choose the audio format, and add the lyrics from lrclib.net:
 
     uv run tunehound download LINK --format flac --lyrics
