@@ -26,8 +26,9 @@ class Result:
     """Hold what one download made."""
 
     track: Track
-    match: Candidate
+    match: Candidate | None
     path: Path
+    skipped: bool = False
 
 
 def safe_filename(text: str) -> str:
@@ -55,12 +56,19 @@ def download_track(
     get_bytes: Callable[[str], bytes] = http.get_bytes,
     tag: Callable[[Path, Track, bytes | None], None] = write_tags,
 ) -> Result:
-    """Read the track of a link, find it, download it, and tag it."""
+    """Read the track of a link, find it, download it, and tag it.
+
+    When the audio file of the track is already in the folder, do not
+    search or download again.
+    """
     track = fetch(link)
+    stem = output_dir / safe_filename(f"{track.artist} - {track.title}")
+    existing = stem.with_name(f"{stem.name}.mp3")
+    if existing.is_file():
+        return Result(track=track, match=None, path=existing, skipped=True)
     match = best_match(track, search(track))
     if match is None:
         raise NoMatchError(f"found no result for {track.artist} - {track.title}")
-    stem = output_dir / safe_filename(f"{track.artist} - {track.title}")
     path = download(match.url, stem, cookies_from_browser=cookies_from_browser)
     tag(path, track, _fetch_cover(track.cover_url, get_bytes))
     return Result(track=track, match=match, path=path)

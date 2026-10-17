@@ -89,3 +89,18 @@ def test_download_track_tags_without_a_cover_when_the_cover_fails(tmp_path):
     steps, calls = make_steps([GOOD], cover_error=OSError("offline"))
     download_track("link", tmp_path, **steps)
     assert calls["tag"][2] is None
+
+
+def test_download_track_skips_a_file_that_is_already_there(tmp_path):
+    existing = tmp_path / "First - Song_ Part 1_2.mp3"
+    existing.write_bytes(b"old audio")
+    steps, calls = make_steps([GOOD])
+
+    result = download_track("link", tmp_path, **steps)
+
+    assert result.skipped is True
+    assert result.path == existing
+    assert result.match is None
+    assert "download" not in calls
+    assert "tag" not in calls
+    assert existing.read_bytes() == b"old audio"
