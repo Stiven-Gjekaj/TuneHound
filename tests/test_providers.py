@@ -25,3 +25,7 @@ def test_find_provider_refuses_an_unknown_link():
 
 def test_find_provider_knows_spotify_by_default():
     assert find_provider("spotify:track:" + "a" * 22).name == "spotify"
+
+
+def test_find_provider_knows_deezer_by_default():
+    assert find_provider("https://www.deezer.com/track/1").name == "deezer"
