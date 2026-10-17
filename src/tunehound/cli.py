@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from tunehound import __version__
+from tunehound.config import ConfigError, default_path, load
 from tunehound.download import CODECS, DEFAULT_CODEC
 from tunehound.naming import DEFAULT_TEMPLATE, FIELDS, TemplateError, check_template
 
@@ -19,8 +20,22 @@ def template_argument(text: str) -> str:
     return text
 
 
-def build_parser() -> argparse.ArgumentParser:
-    """Make the parser for the command line."""
+def _add_config_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--config",
+        type=Path,
+        metavar="FILE",
+        help=f"the configuration file (default: {default_path()})",
+    )
+
+
+def build_parser(defaults: dict | None = None) -> argparse.ArgumentParser:
+    """Make the parser for the command line.
+
+    `defaults` holds the values of the configuration file. A value on the
+    command line wins over them.
+    """
+    defaults = defaults or {}
     parser = argparse.ArgumentParser(
         prog="tunehound",
         description="Download music from many providers with yt-dlp.",
@@ -30,31 +45,33 @@ def build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
+    _add_config_option(parser)
     options = argparse.ArgumentParser(add_help=False)
     options.add_argument(
         "-o",
         "--output",
         type=Path,
-        default=Path.cwd(),
+        default=defaults.get("output", Path.cwd()),
         help="the folder for the audio files (default: the current folder)",
     )
     options.add_argument(
         "-f",
         "--format",
         choices=CODECS,
-        default=DEFAULT_CODEC,
+        default=defaults.get("format", DEFAULT_CODEC),
         help="the audio format (default: mp3)",
     )
     options.add_argument(
         "--lyrics",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=defaults.get("lyrics", False),
         help="write the lyrics from lrclib.net into the tags",
     )
     options.add_argument(
         "-t",
         "--template",
         type=template_argument,
-        default=DEFAULT_TEMPLATE,
+        default=defaults.get("template", DEFAULT_TEMPLATE),
         help=(
             f'the path of each file, with no suffix (default: "{DEFAULT_TEMPLATE}"). '
             "A slash makes a folder. Fields: "
@@ -64,10 +81,14 @@ def build_parser() -> argparse.ArgumentParser:
     options.add_argument(
         "--cookies-from-browser",
         metavar="BROWSER",
+        default=defaults.get("cookies_from_browser"),
         help="use the YouTube sign-in of a browser, for example firefox",
     )
 
     commands = parser.add_subparsers(dest="command", metavar="COMMAND")
+    commands.add_parser(
+        "config", help="show the path and the values of the configuration file"
+    )
     download = commands.add_parser(
         "download", parents=[options], help="download the songs of a link"
     )
@@ -142,13 +163,41 @@ def run_download(
     return 1 if any(outcome.status == "failed" for outcome in outcomes) else 0
 
 
+def run_config(path: Path, values: dict) -> int:
+    """Print the path of the configuration file and the values in it."""
+    state = "found" if path.is_file() else "not found, so TuneHound uses the defaults"
+    print(f"{path} ({state})")
+    for key, value in values.items():
+        print(f"  {key} = {value}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the command line and return the exit code."""
-    parser = build_parser()
+    # Read the configuration file first, because its values are the
+    # defaults of the real parser.
+    first = argparse.ArgumentParser(add_help=False)
+    _add_config_option(first)
+    known, _ = first.parse_known_args(argv)
+    path = known.config or default_path()
+    try:
+        values = load(path)
+    except ConfigError as error:
+        print(f"tunehound: {error}", file=sys.stderr)
+        return 2
+    if known.config is not None and not path.is_file():
+        print(
+            f"tunehound: the configuration file {path} does not exist", file=sys.stderr
+        )
+        return 2
+
+    parser = build_parser(values)
     args = parser.parse_args(argv)
     if args.command is None:
         parser.print_help()
         return 0
+    if args.command == "config":
+        return run_config(path, values)
     if args.command == "download":
         return run_download(
             args.link,

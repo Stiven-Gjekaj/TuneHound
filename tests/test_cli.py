@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -36,7 +37,6 @@ def test_module_runs_as_a_program():
 
 
 def make_outcomes(statuses):
-    from pathlib import Path
 
     from tunehound.pipeline import Outcome, Result
     from tunehound.track import Track
@@ -84,7 +84,6 @@ def fake_download_link(monkeypatch, statuses, asked=None):
 
 
 def test_download_command_passes_the_options(monkeypatch, tmp_path):
-    from pathlib import Path
 
     asked = {}
     fake_download_link(monkeypatch, ["downloaded"], asked)
@@ -207,3 +206,73 @@ def test_download_command_refuses_a_bad_template(capsys):
         main(["download", "x", "--template", "{genre} - {title}"])
     assert exit_info.value.code == 2
     assert "unknown field {genre}" in capsys.readouterr().err
+
+
+@pytest.fixture(autouse=True)
+def no_user_config(monkeypatch, tmp_path_factory):
+    """Keep the configuration file of the user out of every test."""
+    folder = tmp_path_factory.mktemp("config")
+    monkeypatch.setenv("TUNEHOUND_CONFIG", str(folder / "none.toml"))
+    return folder
+
+
+def test_download_command_takes_its_defaults_from_the_config_file(
+    monkeypatch, tmp_path
+):
+    config = tmp_path / "config.toml"
+    config.write_text(
+        f'output = "{tmp_path / "Music"}"\n'
+        'format = "opus"\n'
+        "lyrics = true\n"
+        'template = "{title}"\n'
+        'cookies_from_browser = "safari"\n'
+    )
+    asked = {}
+    fake_download_link(monkeypatch, [], asked)
+    assert main(["--config", str(config), "download", "x"]) == 0
+    assert asked == {
+        "link": "x",
+        "output": tmp_path / "Music",
+        "browser": "safari",
+        "codec": "opus",
+        "lyrics": True,
+        "template": "{title}",
+    }
+
+
+def test_the_command_line_wins_over_the_config_file(monkeypatch, tmp_path):
+    config = tmp_path / "config.toml"
+    config.write_text('format = "opus"\nlyrics = true\n')
+    monkeypatch.setenv("TUNEHOUND_CONFIG", str(config))
+    asked = {}
+    fake_download_link(monkeypatch, [], asked)
+    main(["download", "x", "--format", "flac", "--no-lyrics"])
+    assert (asked["codec"], asked["lyrics"]) == ("flac", False)
+
+
+def test_a_bad_config_file_stops_the_command(tmp_path, capsys):
+    config = tmp_path / "config.toml"
+    config.write_text('format = "wav"\n')
+    assert main(["--config", str(config), "download", "x"]) == 2
+    assert "format must be" in capsys.readouterr().err
+
+
+def test_a_missing_config_file_given_by_name_stops_the_command(tmp_path, capsys):
+    assert main(["--config", str(tmp_path / "none.toml"), "download", "x"]) == 2
+    assert "does not exist" in capsys.readouterr().err
+
+
+def test_config_command_shows_the_path_and_the_values(tmp_path, capsys, monkeypatch):
+    config = tmp_path / "config.toml"
+    config.write_text('format = "flac"\n')
+    monkeypatch.setenv("TUNEHOUND_CONFIG", str(config))
+    assert main(["config"]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out == [f"{config} (found)", "  format = flac"]
+
+
+def test_config_command_says_when_there_is_no_file(capsys, no_user_config):
+    assert main(["config"]) == 0
+    out = capsys.readouterr().out
+    assert "not found" in out
+    assert str(no_user_config / "none.toml") in out
