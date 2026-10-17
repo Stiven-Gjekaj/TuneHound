@@ -57,10 +57,17 @@ def find_on_deezer(track: Track, get_json: GetJson = http.get_json) -> Track | N
     query = urllib.parse.quote(f"{track.artists[0]} {track.title}")
     answer = get_json(f"{API}/search?q={query}&limit={SEARCH_LIMIT}")
     items = answer.get("data") if isinstance(answer, dict) else None
+    first: Track | None = None
     for item in items or []:
-        if _same_song(track, item):
-            return deezer.fetch_track(deezer.TRACK_URL.format(id=item["id"]), get_json)
-    return None
+        if not _same_song(track, item):
+            continue
+        found = deezer.fetch_track(deezer.TRACK_URL.format(id=item["id"]), get_json)
+        # The same song is often on a compilation too. The release date
+        # tells which result is the original release.
+        if not track.release_date or found.release_date == track.release_date:
+            return found
+        first = first or found
+    return first
 
 
 def enrich(track: Track, get_json: GetJson = http.get_json) -> Track:

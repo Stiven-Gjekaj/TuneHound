@@ -121,3 +121,29 @@ def test_enrich_does_not_ask_for_a_complete_track():
     )
     assert is_complete(full)
     assert enrich(full, lambda url: (_ for _ in ()).throw(AssertionError)) is full
+
+
+def test_find_on_deezer_prefers_the_result_with_the_same_release_date():
+    tracks = {
+        "1": deezer_track(id=1, release_date="2008-01-01", album={"title": "Hits"}),
+        "2": deezer_track(id=2, release_date="1987-11-12", album={"title": "Original"}),
+    }
+
+    def get_json(url):
+        if "search" in url:
+            return search_answer(item(1), item(2))
+        return tracks[url.rsplit("/", 1)[1]]
+
+    assert find_on_deezer(BARE, get_json).album == "Original"
+
+
+def test_find_on_deezer_takes_the_first_match_when_no_date_agrees():
+    def get_json(url):
+        if "search" in url:
+            return search_answer(item(1), item(2))
+        track_id = int(url.rsplit("/", 1)[1])
+        return deezer_track(
+            id=track_id, release_date="2010-01-01", album={"title": f"A{track_id}"}
+        )
+
+    assert find_on_deezer(BARE, get_json).album == "A1"
