@@ -1,16 +1,18 @@
 """Turn a provider link into a tagged audio file."""
 
+import dataclasses
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 from tunehound import http
-from tunehound.download import download_audio
+from tunehound.download import DownloadError, download_audio
 from tunehound.matching import Candidate, best_match
-from tunehound.providers.spotify import fetch_track
+from tunehound.providers import spotify
+from tunehound.providers.spotify import SpotifyError, fetch_track
 from tunehound.search import search_youtube
-from tunehound.tagging import write_tags
+from tunehound.tagging import TaggingError, write_tags
 from tunehound.track import Track
 
 MAX_FILENAME_LENGTH = 200
@@ -55,6 +57,8 @@ def download_track(
     download: Callable[..., Path] = download_audio,
     get_bytes: Callable[[str], bytes] = http.get_bytes,
     tag: Callable[[Path, Track, bytes | None], None] = write_tags,
+    album: str | None = None,
+    track_number: int | None = None,
 ) -> Result:
     """Read the track of a link, find it, download it, and tag it.
 
@@ -62,6 +66,10 @@ def download_track(
     search or download again.
     """
     track = fetch(link)
+    if album:
+        track = dataclasses.replace(track, album=album)
+    if track_number:
+        track = dataclasses.replace(track, track_number=track_number)
     stem = output_dir / safe_filename(f"{track.artist} - {track.title}")
     existing = stem.with_name(f"{stem.name}.mp3")
     if existing.is_file():
@@ -72,3 +80,67 @@ def download_track(
     path = download(match.url, stem, cookies_from_browser=cookies_from_browser)
     tag(path, track, _fetch_cover(track.cover_url, get_bytes))
     return Result(track=track, match=match, path=path)
+
+
+SONG_ERRORS = (SpotifyError, NoMatchError, DownloadError, TaggingError, OSError)
+
+
+@dataclass(frozen=True)
+class Outcome:
+    """Hold what happened to one song of a link."""
+
+    link: str
+    result: Result | None = None
+    error: str | None = None
+
+    @property
+    def status(self) -> str:
+        """Return "downloaded", "skipped", or "failed"."""
+        if self.result is None:
+            return "failed"
+        return "skipped" if self.result.skipped else "downloaded"
+
+
+OutcomeHook = Callable[[int, int, Outcome], None]
+
+
+def download_link(
+    link: str,
+    output_dir: Path,
+    cookies_from_browser: str | None = None,
+    on_outcome: OutcomeHook | None = None,
+    fetch_list: Callable[[str], spotify.TrackList] = spotify.fetch_list,
+    download_song: Callable[..., Result] = download_track,
+) -> list[Outcome]:
+    """Download the song of a track link, or each song of a list link.
+
+    A song that fails does not stop the other songs. `on_outcome` gets the
+    number of the song, the count of songs, and the outcome, after each song.
+    """
+    kind = spotify.parse_link(link).kind
+    if kind == "track":
+        songs = [(link, None, None)]
+    else:
+        track_list = fetch_list(link)
+        songs = [
+            (song_link, track_list.album, number if track_list.album else None)
+            for number, song_link in enumerate(track_list.track_links, start=1)
+        ]
+
+    outcomes = []
+    for index, (song_link, album, number) in enumerate(songs, start=1):
+        try:
+            result = download_song(
+                song_link,
+                output_dir,
+                cookies_from_browser=cookies_from_browser,
+                album=album,
+                track_number=number,
+            )
+            outcome = Outcome(link=song_link, result=result)
+        except SONG_ERRORS as error:
+            outcome = Outcome(link=song_link, error=str(error))
+        outcomes.append(outcome)
+        if on_outcome is not None:
+            on_outcome(index, len(songs), outcome)
+    return outcomes
