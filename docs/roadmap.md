@@ -54,3 +54,27 @@ only.
   template, and the browser for the sign-in.
 - Install with `uv tool install` or `pipx install` from GitHub.
 - A full hand check of every provider and every format on a real machine.
+
+## The hand check of 1.0.0
+
+On 2026-10-17, on macOS with Python 3.13, in Albania. Each line is one real
+download through `tunehound download`.
+
+| Link | Format | Result |
+| --- | --- | --- |
+| Spotify track | mp3 | passed, tags and cover |
+| Apple Music song | opus | passed on the second try, with album, track, and disc |
+| SoundCloud track | mp3 | passed, tags and cover |
+| Bandcamp track, with a template of three folders | mp3 | passed |
+| YouTube link, direct | m4a | passed, tags and cover |
+| Deezer track | m4a | failed: YouTube asked for a sign-in to confirm that the request is not a bot |
+| Search text | flac | failed: the same YouTube sign-in check |
+
+- The first Apple Music try failed with a TLS timeout. The second try passed.
+- The two failures come from YouTube, not from TuneHound. The Deezer and
+  search providers read the metadata in the live checks of 0.3.0, and the
+  match and the download use the same code as Spotify and Apple Music,
+  which passed. Run them again with `--cookies-from-browser BROWSER`.
+- The flac format passed in the live check of 0.4.0, on the Bandcamp test
+  song.
+- A second run of the Spotify link skipped the file that was already there.
