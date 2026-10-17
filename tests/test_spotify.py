@@ -5,6 +5,7 @@ import pytest
 from tunehound.providers.spotify import (
     SpotifyError,
     SpotifyLink,
+    TrackList,
     fetch_list,
     fetch_track,
     parse_embed_list,
@@ -206,3 +207,10 @@ def test_fetch_list_reads_the_embed_page_of_the_link():
 def test_fetch_list_refuses_a_track_link():
     with pytest.raises(SpotifyError):
         fetch_list(f"https://open.spotify.com/track/{TRACK_ID}", lambda url: "")
+
+
+def test_track_list_tells_when_the_list_can_be_cut():
+    full = TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(100)))
+    short = TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(99)))
+    assert full.maybe_cut is True
+    assert short.maybe_cut is False

@@ -51,6 +51,15 @@ def _print_outcome(index: int, total: int, outcome) -> None:
     print(line, file=sys.stderr if outcome.status == "failed" else sys.stdout)
 
 
+def _print_list(track_list) -> None:
+    if track_list.maybe_cut:
+        print(
+            f"tunehound: the list has {len(track_list.track_links)} songs. "
+            "Spotify can give no more than this, so some songs can be missing.",
+            file=sys.stderr,
+        )
+
+
 def summarize(outcomes) -> str:
     """Return one line that counts the outcomes of each kind."""
     counts = {status: 0 for status in ("downloaded", "skipped", "failed")}
@@ -72,6 +81,7 @@ def run_download(link: str, output: Path, cookies_from_browser: str | None) -> i
             output,
             cookies_from_browser=cookies_from_browser,
             on_outcome=_print_outcome,
+            on_list=_print_list,
         )
     except (SpotifyError, OSError) as error:
         print(f"tunehound: {error}", file=sys.stderr)

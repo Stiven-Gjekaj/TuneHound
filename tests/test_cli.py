@@ -56,7 +56,9 @@ def make_outcomes(statuses):
 def fake_download_link(monkeypatch, statuses, asked=None):
     from tunehound import pipeline
 
-    def download_link(link, output, cookies_from_browser=None, on_outcome=None):
+    def download_link(
+        link, output, cookies_from_browser=None, on_outcome=None, on_list=None
+    ):
         if asked is not None:
             asked.update(link=link, output=output, browser=cookies_from_browser)
         outcomes = make_outcomes(statuses)
@@ -116,3 +118,18 @@ def test_summarize_says_song_for_one_song():
 def test_download_command_refuses_a_bad_link(capsys):
     assert main(["download", "https://example.com/not-spotify"]) == 1
     assert "not a Spotify link" in capsys.readouterr().err
+
+
+def test_download_command_warns_about_a_list_that_can_be_cut(monkeypatch, capsys):
+    from tunehound import pipeline
+    from tunehound.providers.spotify import TrackList
+
+    def download_link(
+        link, output, cookies_from_browser=None, on_outcome=None, on_list=None
+    ):
+        on_list(TrackList("playlist", "Mix", tuple(f"s{n}" for n in range(100))))
+        return []
+
+    monkeypatch.setattr(pipeline, "download_link", download_link)
+    main(["download", "spotify:playlist:x"])
+    assert "the list has 100 songs" in capsys.readouterr().err

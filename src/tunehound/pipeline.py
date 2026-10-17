@@ -109,6 +109,7 @@ def download_link(
     output_dir: Path,
     cookies_from_browser: str | None = None,
     on_outcome: OutcomeHook | None = None,
+    on_list: Callable[[spotify.TrackList], None] | None = None,
     fetch_list: Callable[[str], spotify.TrackList] = spotify.fetch_list,
     download_song: Callable[..., Result] = download_track,
 ) -> list[Outcome]:
@@ -122,6 +123,8 @@ def download_link(
         songs = [(link, None, None)]
     else:
         track_list = fetch_list(link)
+        if on_list is not None:
+            on_list(track_list)
         songs = [
             (song_link, track_list.album, number if track_list.album else None)
             for number, song_link in enumerate(track_list.track_links, start=1)

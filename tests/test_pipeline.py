@@ -202,3 +202,17 @@ def test_outcome_status_tells_a_skipped_song():
     track = Track("T", ("A",), 1000, "x")
     skipped = Outcome("x", Result(track=track, match=None, path=None, skipped=True))
     assert skipped.status == "skipped"
+
+
+def test_download_link_gives_the_list_to_the_hook(tmp_path):
+    download_song, _ = fake_song_downloader()
+    playlist = TrackList("playlist", "Mix", ("s1",))
+    seen = []
+    download_link(
+        PLAYLIST_LINK,
+        tmp_path,
+        on_list=seen.append,
+        fetch_list=lambda link: playlist,
+        download_song=download_song,
+    )
+    assert seen == [playlist]

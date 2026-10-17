@@ -26,6 +26,10 @@ _NEXT_DATA = re.compile(
 EMBED_URL = "https://open.spotify.com/embed/{kind}/{id}"
 TRACK_URL = "https://open.spotify.com/track/{id}"
 
+# The embed page of a playlist gave 100 songs at most in a test. A list
+# with this count can be cut, so TuneHound warns about it.
+EMBED_LIST_LIMIT = 100
+
 
 class SpotifyError(Exception):
     """Tell that a Spotify link or page is not usable."""
@@ -69,6 +73,11 @@ class TrackList:
     def album(self) -> str | None:
         """Return the album name for an album, and None for a playlist."""
         return self.name if self.kind == "album" else None
+
+    @property
+    def maybe_cut(self) -> bool:
+        """Tell if the embed page can have cut the list."""
+        return len(self.track_links) >= EMBED_LIST_LIMIT
 
 
 def _read_entity(page: str, kind: str) -> dict:
