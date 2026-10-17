@@ -132,7 +132,11 @@ def _describe(outcome) -> str:
 
 def _print_outcome(index: int, total: int, outcome) -> None:
     line = f"[{index}/{total}] {outcome.status:<10} {_describe(outcome)}"
-    print(line, file=sys.stderr if outcome.status == "failed" else sys.stdout)
+    print(
+        line,
+        file=sys.stderr if outcome.status == "failed" else sys.stdout,
+        flush=True,
+    )
 
 
 def _print_list(track_list) -> None:
@@ -190,7 +194,11 @@ def _line_printer(line: int, lines: int):
         if total > 1:
             position += f" song {index}/{total}"
         text = f"[{position}] {outcome.status:<10} {_describe(outcome)}"
-        print(text, file=sys.stderr if outcome.status == "failed" else sys.stdout)
+        print(
+            text,
+            file=sys.stderr if outcome.status == "failed" else sys.stdout,
+            flush=True,
+        )
 
     return print_outcome
 
