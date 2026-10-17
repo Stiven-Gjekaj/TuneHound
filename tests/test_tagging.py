@@ -17,6 +17,7 @@ TRACK = Track(
     duration_ms=1000,
     source_url="https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",
     album="An Album",
+    track_number=7,
     release_date="1987-11-12",
     isrc="GBARL9300135",
 )
@@ -64,6 +65,7 @@ def test_write_tags_writes_the_metadata(silent_mp3):
     assert tags["TPE1"].text == ["First", "Second"]
     assert tags["TPE2"].text == ["First"]
     assert tags["TALB"].text == ["An Album"]
+    assert tags["TRCK"].text == ["7"]
     assert str(tags["TDRC"].text[0]) == "1987-11-12"
     assert tags["TSRC"].text == ["GBARL9300135"]
     assert tags["WOAS"].url == TRACK.source_url
@@ -83,7 +85,7 @@ def test_write_tags_leaves_out_the_missing_fields(silent_mp3):
     )
     write_tags(silent_mp3, bare)
     tags = ID3(silent_mp3)
-    for frame in ("TALB", "TDRC", "TSRC", "APIC"):
+    for frame in ("TALB", "TRCK", "TDRC", "TSRC", "APIC"):
         assert not tags.getall(frame)
 
 
