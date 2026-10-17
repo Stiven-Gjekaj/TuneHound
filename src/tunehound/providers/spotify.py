@@ -23,7 +23,7 @@ _NEXT_DATA = re.compile(
     r'<script id="__NEXT_DATA__" type="application/json">(?P<json>.*?)</script>',
     re.DOTALL,
 )
-EMBED_URL = "https://open.spotify.com/embed/track/{id}"
+EMBED_URL = "https://open.spotify.com/embed/{kind}/{id}"
 TRACK_URL = "https://open.spotify.com/track/{id}"
 
 
@@ -57,18 +57,37 @@ def parse_track_id(link: str) -> str:
     return parsed.id
 
 
-def parse_embed_page(page: str, track_id: str) -> Track:
-    """Make a track from the HTML of a Spotify embed page."""
+@dataclass(frozen=True)
+class TrackList:
+    """Hold the songs of a Spotify album or playlist."""
+
+    kind: str
+    name: str
+    track_links: tuple[str, ...]
+
+    @property
+    def album(self) -> str | None:
+        """Return the album name for an album, and None for a playlist."""
+        return self.name if self.kind == "album" else None
+
+
+def _read_entity(page: str, kind: str) -> dict:
     match = _NEXT_DATA.search(page)
     if not match:
-        raise SpotifyError("the embed page has no track data")
+        raise SpotifyError(f"the embed page has no {kind} data")
     try:
         data = json.loads(match.group("json"))
         entity = data["props"]["pageProps"]["state"]["data"]["entity"]
     except (ValueError, KeyError, TypeError) as error:
         raise SpotifyError("the embed page has an unknown shape") from error
-    if entity.get("type") != "track":
-        raise SpotifyError("the embed page is not for a track")
+    if not isinstance(entity, dict) or entity.get("type") != kind:
+        raise SpotifyError(f"the embed page is not for a {kind}")
+    return entity
+
+
+def parse_embed_page(page: str, track_id: str) -> Track:
+    """Make a track from the HTML of a Spotify embed page."""
+    entity = _read_entity(page, "track")
 
     artists = tuple(artist["name"] for artist in entity.get("artists", []))
     if not entity.get("name") or not artists:
@@ -96,5 +115,26 @@ def parse_embed_page(page: str, track_id: str) -> Track:
 def fetch_track(link: str, get_text: Callable[[str], str] = http.get_text) -> Track:
     """Read the metadata of the track in a Spotify link."""
     track_id = parse_track_id(link)
-    page = get_text(EMBED_URL.format(id=track_id))
+    page = get_text(EMBED_URL.format(kind="track", id=track_id))
     return parse_embed_page(page, track_id)
+
+
+def parse_embed_list(page: str, kind: str) -> TrackList:
+    """Make a track list from the HTML of an album or playlist embed page."""
+    entity = _read_entity(page, kind)
+    links = []
+    for item in entity.get("trackList") or []:
+        uri = item.get("uri") or ""
+        match = _URI_PATTERN.match(uri)
+        if match and match.group("kind") == "track":
+            links.append(TRACK_URL.format(id=match.group("id")))
+    return TrackList(kind=kind, name=entity.get("name") or "", track_links=tuple(links))
+
+
+def fetch_list(link: str, get_text: Callable[[str], str] = http.get_text) -> TrackList:
+    """Read the songs of a Spotify album or playlist link."""
+    parsed = parse_link(link)
+    if parsed.kind not in ("album", "playlist"):
+        raise SpotifyError(f"not a Spotify album or playlist link: {link.strip()}")
+    page = get_text(EMBED_URL.format(kind=parsed.kind, id=parsed.id))
+    return parse_embed_list(page, parsed.kind)

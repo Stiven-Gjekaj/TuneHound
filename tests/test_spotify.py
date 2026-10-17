@@ -5,7 +5,9 @@ import pytest
 from tunehound.providers.spotify import (
     SpotifyError,
     SpotifyLink,
+    fetch_list,
     fetch_track,
+    parse_embed_list,
     parse_embed_page,
     parse_link,
     parse_track_id,
@@ -154,3 +156,53 @@ def test_fetch_track_reads_the_embed_page_of_the_link():
     track = fetch_track(f"https://open.spotify.com/track/{TRACK_ID}?si=x", get_text)
     assert asked == [f"https://open.spotify.com/embed/track/{TRACK_ID}"]
     assert track.title == "A Song"
+
+
+OTHER_ID = "0" * 22
+
+
+def make_list_entity(kind, items):
+    return {"type": kind, "name": "A List", "trackList": items}
+
+
+def test_parse_embed_list_gives_the_track_links_in_order():
+    items = [
+        {"uri": f"spotify:track:{TRACK_ID}", "entityType": "track"},
+        {"uri": f"spotify:episode:{OTHER_ID}", "entityType": "episode"},
+        {"uri": "spotify:local:abc"},
+        {"uri": f"spotify:track:{OTHER_ID}", "entityType": "track"},
+    ]
+    found = parse_embed_list(make_page(make_list_entity("playlist", items)), "playlist")
+    assert found.track_links == (
+        f"https://open.spotify.com/track/{TRACK_ID}",
+        f"https://open.spotify.com/track/{OTHER_ID}",
+    )
+    assert found.name == "A List"
+
+
+def test_track_list_gives_the_album_only_for_an_album():
+    album = parse_embed_list(make_page(make_list_entity("album", [])), "album")
+    playlist = parse_embed_list(make_page(make_list_entity("playlist", [])), "playlist")
+    assert album.album == "A List"
+    assert playlist.album is None
+
+
+def test_parse_embed_list_refuses_the_wrong_kind():
+    with pytest.raises(SpotifyError):
+        parse_embed_list(make_page(make_list_entity("album", [])), "playlist")
+
+
+def test_fetch_list_reads_the_embed_page_of_the_link():
+    asked = []
+
+    def get_text(url):
+        asked.append(url)
+        return make_page(make_list_entity("album", []))
+
+    fetch_list(f"https://open.spotify.com/album/{TRACK_ID}", get_text)
+    assert asked == [f"https://open.spotify.com/embed/album/{TRACK_ID}"]
+
+
+def test_fetch_list_refuses_a_track_link():
+    with pytest.raises(SpotifyError):
+        fetch_list(f"https://open.spotify.com/track/{TRACK_ID}", lambda url: "")
