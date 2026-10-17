@@ -1,3 +1,4 @@
+import dataclasses
 from pathlib import Path
 
 import pytest
@@ -65,6 +66,7 @@ def make_steps(candidates, cover=b"\xff\xd8\xffcover", cover_error=None):
         calls["tag"] = (path, track, cover_data)
 
     steps = {
+        "fill": lambda track: track,
         "fetch": fetch,
         "search": search,
         "download": download,
@@ -329,3 +331,20 @@ def test_download_link_passes_the_codec(tmp_path):
         "x", tmp_path, codec="m4a", find=fake_find(), download_song=download_song
     )
     assert seen == ["m4a"]
+
+
+def test_download_track_fills_the_track_before_the_search(tmp_path):
+    steps, calls = make_steps([GOOD])
+    searched = []
+    steps["fill"] = lambda track: dataclasses.replace(track, isrc="FILLED")
+    steps["search"] = lambda track: searched.append(track.isrc) or [GOOD]
+    result = download_track("link", tmp_path, **steps)
+    assert searched == ["FILLED"]
+    assert calls["tag"][1].isrc == "FILLED"
+    assert result.track.isrc == "FILLED"
+
+
+def test_download_track_does_not_fill_a_direct_track(tmp_path):
+    steps, _ = make_steps([])
+    steps["fill"] = lambda track: pytest.fail("a direct track must not be filled")
+    download_track("link", tmp_path, direct=True, **steps)

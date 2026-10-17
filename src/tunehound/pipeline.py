@@ -8,6 +8,7 @@ from pathlib import Path
 
 from tunehound import http
 from tunehound.download import DEFAULT_CODEC, DownloadError, download_audio
+from tunehound.enrich import enrich
 from tunehound.matching import Candidate, best_match
 from tunehound.providers import Provider, ProviderError, TrackList, find_provider
 from tunehound.search import search_youtube
@@ -62,6 +63,7 @@ def download_track(
     track_number: int | None = None,
     direct: bool = False,
     codec: str = DEFAULT_CODEC,
+    fill: Callable[[Track], Track] = enrich,
 ) -> Result:
     """Read the track of a link, find it, download it, and tag it.
 
@@ -76,6 +78,8 @@ def download_track(
         track = dataclasses.replace(track, album=album)
     if track_number and not track.track_number:
         track = dataclasses.replace(track, track_number=track_number)
+    if not direct:
+        track = fill(track)
     stem = output_dir / safe_filename(f"{track.artist} - {track.title}")
     existing = stem.with_name(f"{stem.name}.{codec}")
     if existing.is_file():
