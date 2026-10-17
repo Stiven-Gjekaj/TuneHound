@@ -26,12 +26,13 @@ _Paste a link. TuneHound finds the song, downloads it, and tags it._
 ---
 
 > [!NOTE]
-> **Version 0.5.0 is out.**
+> **Version 1.0.0 is out.**
 > It downloads songs, albums, and playlists from Spotify, Deezer, Apple
 > Music, YouTube, SoundCloud, and Bandcamp links, or from a search text, as
-> mp3, m4a, opus, or flac, with full tags and lyrics on request.
+> mp3, m4a, opus, or flac, with full tags, lyrics on request, a file name
+> template, and a configuration file.
 > [Install](#install) says how to get it, and
-> [the roadmap](docs/roadmap.md) says what comes next.
+> [the roadmap](docs/roadmap.md) holds the hand check of this version.
 
 ## Overview
 
