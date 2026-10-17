@@ -20,40 +20,47 @@ def build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    commands = parser.add_subparsers(dest="command", metavar="COMMAND")
-    commands.add_parser("tui", help="open the terminal user interface")
-
-    download = commands.add_parser("download", help="download the songs of a link")
-    download.add_argument(
-        "link",
-        help=(
-            "a Spotify, Deezer, Apple Music, YouTube, SoundCloud, or Bandcamp "
-            'link, or a search text such as "artist - title"'
-        ),
-    )
-    download.add_argument(
+    # The download command and the TUI take the same options.
+    options = argparse.ArgumentParser(add_help=False)
+    options.add_argument(
         "-o",
         "--output",
         type=Path,
         default=Path.cwd(),
-        help="the folder for the audio file (default: the current folder)",
+        help="the folder for the audio files (default: the current folder)",
     )
-    download.add_argument(
+    options.add_argument(
         "-f",
         "--format",
         choices=CODECS,
         default=DEFAULT_CODEC,
         help="the audio format (default: mp3)",
     )
-    download.add_argument(
+    options.add_argument(
         "--lyrics",
         action="store_true",
         help="write the lyrics from lrclib.net into the tags",
     )
-    download.add_argument(
+    options.add_argument(
         "--cookies-from-browser",
         metavar="BROWSER",
         help="use the YouTube sign-in of a browser, for example firefox",
+    )
+
+    commands = parser.add_subparsers(dest="command", metavar="COMMAND")
+    commands.add_parser(
+        "tui", parents=[options], help="open the terminal user interface"
+    )
+
+    download = commands.add_parser(
+        "download", parents=[options], help="download the songs of a link"
+    )
+    download.add_argument(
+        "link",
+        help=(
+            "a Spotify, Deezer, Apple Music, YouTube, SoundCloud, or Bandcamp "
+            'link, or a search text such as "artist - title"'
+        ),
     )
     return parser
 
@@ -117,11 +124,21 @@ def run_download(
     return 1 if any(outcome.status == "failed" for outcome in outcomes) else 0
 
 
-def run_tui() -> int:
+def run_tui(
+    output: Path,
+    cookies_from_browser: str | None = None,
+    codec: str = DEFAULT_CODEC,
+    lyrics: bool = False,
+) -> int:
     """Open the terminal user interface."""
     from tunehound.tui import TuneHoundApp
 
-    TuneHoundApp().run()
+    TuneHoundApp(
+        output_dir=output,
+        codec=codec,
+        lyrics=lyrics,
+        cookies_from_browser=cookies_from_browser,
+    ).run()
     return 0
 
 
@@ -133,7 +150,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help()
         return 0
     if args.command == "tui":
-        return run_tui()
+        return run_tui(args.output, args.cookies_from_browser, args.format, args.lyrics)
     if args.command == "download":
         return run_download(
             args.link,

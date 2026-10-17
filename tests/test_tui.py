@@ -227,3 +227,24 @@ def test_state_of_groups_the_statuses():
         "done",
         "failed",
     ]
+
+
+def test_tui_command_passes_the_options_to_the_app(monkeypatch, tmp_path):
+    opened = []
+    monkeypatch.setattr(TuneHoundApp, "run", lambda self: opened.append(self))
+    code = cli.main(
+        [
+            "tui",
+            "-o",
+            str(tmp_path),
+            "--format",
+            "opus",
+            "--lyrics",
+            "--cookies-from-browser",
+            "chrome",
+        ]
+    )
+    assert code == 0
+    [app] = opened
+    assert app.output_dir == tmp_path
+    assert (app.codec, app.lyrics, app.cookies_from_browser) == ("opus", True, "chrome")
