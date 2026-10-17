@@ -67,9 +67,9 @@ def download_track(
     if fetch is None:
         fetch = find_provider(link).fetch_track
     track = fetch(link)
-    if album:
+    if album and not track.album:
         track = dataclasses.replace(track, album=album)
-    if track_number:
+    if track_number and not track.track_number:
         track = dataclasses.replace(track, track_number=track_number)
     stem = output_dir / safe_filename(f"{track.artist} - {track.title}")
     existing = stem.with_name(f"{stem.name}.mp3")

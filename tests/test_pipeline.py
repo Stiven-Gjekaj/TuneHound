@@ -246,3 +246,21 @@ def test_download_link_gives_the_list_to_the_hook(tmp_path):
         download_song=download_song,
     )
     assert seen == [playlist]
+
+
+def test_download_track_keeps_the_album_and_number_of_the_provider(tmp_path):
+    steps, calls = make_steps([GOOD])
+    full = Track(
+        title=TRACK.title,
+        artists=TRACK.artists,
+        duration_ms=TRACK.duration_ms,
+        source_url=TRACK.source_url,
+        album="Disc Album",
+        track_number=2,
+    )
+    steps["fetch"] = lambda link: full
+    result = download_track(
+        "link", tmp_path, album="List Name", track_number=14, **steps
+    )
+    assert result.track.album == "Disc Album"
+    assert result.track.track_number == 2
