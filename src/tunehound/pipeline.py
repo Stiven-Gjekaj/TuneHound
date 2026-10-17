@@ -51,6 +51,25 @@ def _fetch_cover(url: str | None, get_bytes: Callable[[str], bytes]) -> bytes | 
     return data
 
 
+def _progress_hook(
+    progress: Callable[[float], None] | None,
+) -> Callable[[dict], None] | None:
+    """Turn the status of yt-dlp into a fraction from 0 to 1."""
+    if progress is None:
+        return None
+
+    def hook(status: dict) -> None:
+        if status.get("status") == "finished":
+            progress(1.0)
+            return
+        total = status.get("total_bytes") or status.get("total_bytes_estimate")
+        done = status.get("downloaded_bytes")
+        if total and done is not None:
+            progress(min(done / total, 1.0))
+
+    return hook
+
+
 def _find_lyrics(
     track: Track, find_lyrics: Callable[[Track], str | None]
 ) -> str | None:
@@ -76,6 +95,7 @@ def download_track(
     fill: Callable[[Track], Track] = enrich,
     lyrics: bool = False,
     find_lyrics: Callable[[Track], str | None] = fetch_lyrics,
+    progress: Callable[[float], None] | None = None,
 ) -> Result:
     """Read the track of a link, find it, download it, and tag it.
 
@@ -104,10 +124,22 @@ def download_track(
         if match is None:
             raise NoMatchError(f"found no result for {track.artist} - {track.title}")
         url = match.url
-    path = download(url, stem, codec=codec, cookies_from_browser=cookies_from_browser)
+    path = download(
+        url,
+        stem,
+        codec=codec,
+        cookies_from_browser=cookies_from_browser,
+        progress_hook=_progress_hook(progress),
+    )
     text = _find_lyrics(track, find_lyrics) if lyrics else None
     tag(path, track, _fetch_cover(track.cover_url, get_bytes), text)
     return Result(track=track, match=match, path=path)
+
+
+def _bind_progress(
+    on_progress: Callable[[int, float], None], index: int
+) -> Callable[[float], None]:
+    return lambda fraction: on_progress(index, fraction)
 
 
 SONG_ERRORS = (ProviderError, NoMatchError, DownloadError, TaggingError, OSError)
@@ -130,6 +162,8 @@ class Outcome:
 
 
 OutcomeHook = Callable[[int, int, Outcome], None]
+StartHook = Callable[[int, int, str], None]
+ProgressHook = Callable[[int, float], None]
 
 
 def download_link(
@@ -140,6 +174,8 @@ def download_link(
     lyrics: bool = False,
     on_outcome: OutcomeHook | None = None,
     on_list: Callable[[TrackList], None] | None = None,
+    on_start: StartHook | None = None,
+    on_progress: ProgressHook | None = None,
     find: Callable[[str], Provider] = find_provider,
     download_song: Callable[..., Result] = download_track,
 ) -> list[Outcome]:
@@ -162,6 +198,11 @@ def download_link(
 
     outcomes = []
     for index, (song_link, album, number) in enumerate(songs, start=1):
+        if on_start is not None:
+            on_start(index, len(songs), song_link)
+        progress = None
+        if on_progress is not None:
+            progress = _bind_progress(on_progress, index)
         try:
             result = download_song(
                 song_link,
@@ -171,6 +212,7 @@ def download_link(
                 direct=getattr(provider, "direct", False),
                 codec=codec,
                 lyrics=lyrics,
+                progress=progress,
                 album=album,
                 track_number=number,
             )

@@ -51,9 +51,10 @@ def make_steps(candidates, cover=b"\xff\xd8\xffcover", cover_error=None):
     def search(track):
         return candidates
 
-    def download(url, stem, codec="mp3", cookies_from_browser=None):
+    def download(url, stem, codec="mp3", cookies_from_browser=None, progress_hook=None):
         calls["download"] = (url, stem, cookies_from_browser)
         calls["codec"] = codec
+        calls["progress_hook"] = progress_hook
         return stem.with_name(f"{stem.name}.{codec}")
 
     def get_bytes(url):
@@ -142,6 +143,7 @@ def fake_song_downloader(fail_links=()):
         direct=False,
         codec="mp3",
         lyrics=False,
+        progress=None,
         album=None,
         track_number=None,
     ):
@@ -384,3 +386,49 @@ def test_download_link_passes_the_lyrics_option(tmp_path):
         "x", tmp_path, lyrics=True, find=fake_find(), download_song=download_song
     )
     assert seen == [True]
+
+
+def test_download_track_turns_the_yt_dlp_status_into_a_fraction(tmp_path):
+    steps, calls = make_steps([GOOD])
+    seen = []
+    download_track("link", tmp_path, progress=seen.append, **steps)
+    hook = calls["progress_hook"]
+    hook({"status": "downloading", "downloaded_bytes": 25, "total_bytes": 100})
+    hook({"status": "downloading", "downloaded_bytes": 60, "total_bytes_estimate": 120})
+    hook({"status": "downloading", "downloaded_bytes": 5})
+    hook({"status": "finished"})
+    assert seen == [0.25, 0.5, 1.0]
+
+
+def test_download_track_gives_no_hook_without_progress(tmp_path):
+    steps, calls = make_steps([GOOD])
+    download_track("link", tmp_path, **steps)
+    assert calls["progress_hook"] is None
+
+
+def test_download_link_reports_the_start_and_the_progress_of_each_song(tmp_path):
+    events = []
+
+    def download_song(link, output_dir, **options):
+        options["progress"](0.5)
+        return Result(track=TRACK, match=None, path=output_dir / "x.mp3")
+
+    playlist = TrackList("playlist", "Mix", ("s1", "s2"))
+    download_link(
+        PLAYLIST_LINK,
+        tmp_path,
+        on_start=lambda index, total, link: events.append(
+            ("start", index, total, link)
+        ),
+        on_progress=lambda index, fraction: events.append(
+            ("progress", index, fraction)
+        ),
+        find=fake_find(playlist),
+        download_song=download_song,
+    )
+    assert events == [
+        ("start", 1, 2, "s1"),
+        ("progress", 1, 0.5),
+        ("start", 2, 2, "s2"),
+        ("progress", 2, 0.5),
+    ]
