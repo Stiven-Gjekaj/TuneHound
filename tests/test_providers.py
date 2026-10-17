@@ -33,3 +33,12 @@ def test_find_provider_knows_deezer_by_default():
 
 def test_find_provider_knows_apple_music_by_default():
     assert find_provider("https://music.apple.com/us/song/1").name == "apple"
+
+
+def test_find_provider_sends_a_plain_text_to_the_search():
+    assert find_provider("rick astley never gonna").name == "search"
+
+
+def test_find_provider_still_refuses_an_unknown_link():
+    with pytest.raises(ProviderError):
+        find_provider("https://example.com/song")
