@@ -24,6 +24,34 @@ TRACK = Track(
 )
 
 
+def make_silent(tmp_path, suffix, codec_args):
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("ffmpeg is not on the PATH")
+    path = tmp_path / f"silent{suffix}"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=r=44100:cl=mono",
+            "-t",
+            "1",
+        ]
+        + codec_args
+        + [str(path)],
+        check=True,
+    )
+    return path
+
+
+@pytest.fixture
+def silent_m4a(tmp_path):
+    return make_silent(tmp_path, ".m4a", ["-c:a", "aac"])
+
+
 @pytest.fixture
 def silent_mp3(tmp_path):
     if shutil.which("ffmpeg") is None:
@@ -98,6 +126,31 @@ def test_write_tags_replaces_the_old_tags(silent_mp3):
     assert ID3(silent_mp3).getall("APIC")[0].mime == "image/png"
 
 
-def test_write_tags_refuses_a_file_that_is_not_mp3(tmp_path):
+def test_write_tags_refuses_an_unknown_format(tmp_path):
     with pytest.raises(TaggingError):
-        write_tags(tmp_path / "song.opus", TRACK)
+        write_tags(tmp_path / "song.wav", TRACK)
+
+
+def test_write_tags_writes_the_metadata_into_m4a(silent_m4a):
+    from mutagen.mp4 import MP4, MP4Cover
+
+    write_tags(silent_m4a, TRACK, cover=PNG)
+    tags = MP4(silent_m4a).tags
+    assert tags["\xa9nam"] == ["A Song"]
+    assert tags["\xa9ART"] == ["First", "Second"]
+    assert tags["aART"] == ["First"]
+    assert tags["\xa9alb"] == ["An Album"]
+    assert tags["\xa9day"] == ["1987-11-12"]
+    assert tags["trkn"] == [(7, 0)]
+    assert tags["disk"] == [(2, 0)]
+    assert bytes(tags["----:com.apple.iTunes:ISRC"][0]) == b"GBARL9300135"
+    [cover] = tags["covr"]
+    assert bytes(cover) == PNG
+    assert cover.imageformat == MP4Cover.FORMAT_PNG
+
+
+def test_write_tags_keeps_the_m4a_audio_playable(silent_m4a):
+    from mutagen.mp4 import MP4
+
+    write_tags(silent_m4a, TRACK, cover=JPEG)
+    assert MP4(silent_m4a).info.length == pytest.approx(1.0, abs=0.1)

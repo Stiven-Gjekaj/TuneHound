@@ -16,6 +16,7 @@ from mutagen.id3 import (
     WOAS,
     ID3NoHeaderError,
 )
+from mutagen.mp4 import MP4, MP4Cover, MP4FreeForm
 
 from tunehound.track import Track
 
@@ -65,7 +66,36 @@ def _write_id3(path: Path, track: Track, cover: bytes | None) -> None:
     tags.save(path, v2_version=4)
 
 
-_WRITERS = {".mp3": _write_id3}
+def _write_mp4(path: Path, track: Track, cover: bytes | None) -> None:
+    audio = MP4(path)
+    if audio.tags is None:
+        audio.add_tags()
+    tags = audio.tags
+    tags["\xa9nam"] = [track.title]
+    tags["\xa9ART"] = list(track.artists)
+    tags["aART"] = [track.artists[0]]
+    if track.album:
+        tags["\xa9alb"] = [track.album]
+    if track.release_date:
+        tags["\xa9day"] = [track.release_date]
+    if track.track_number:
+        tags["trkn"] = [(track.track_number, 0)]
+    if track.disc_number:
+        tags["disk"] = [(track.disc_number, 0)]
+    if track.isrc:
+        tags["----:com.apple.iTunes:ISRC"] = [MP4FreeForm(track.isrc.encode())]
+    tags["----:com.apple.iTunes:SOURCE"] = [MP4FreeForm(track.source_url.encode())]
+    if cover is not None:
+        kind = (
+            MP4Cover.FORMAT_PNG
+            if image_mime(cover) == "image/png"
+            else MP4Cover.FORMAT_JPEG
+        )
+        tags["covr"] = [MP4Cover(cover, imageformat=kind)]
+    audio.save()
+
+
+_WRITERS = {".mp3": _write_id3, ".m4a": _write_mp4}
 
 
 def write_tags(path: Path, track: Track, cover: bytes | None = None) -> None:
