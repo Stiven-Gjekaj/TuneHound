@@ -293,3 +293,9 @@ def test_download_link_tells_the_song_downloader_about_a_direct_provider(tmp_pat
         "x", tmp_path, find=lambda link: FakeProvider(), download_song=download_song
     )
     assert seen == [True, False]
+
+
+def test_download_track_leaves_out_a_cover_that_is_not_jpeg_or_png(tmp_path):
+    steps, calls = make_steps([GOOD], cover=b"RIFF....WEBPVP8 ")
+    download_track("link", tmp_path, **steps)
+    assert calls["tag"][2] is None

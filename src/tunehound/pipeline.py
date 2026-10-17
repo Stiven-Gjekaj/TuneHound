@@ -11,7 +11,7 @@ from tunehound.download import DownloadError, download_audio
 from tunehound.matching import Candidate, best_match
 from tunehound.providers import Provider, ProviderError, TrackList, find_provider
 from tunehound.search import search_youtube
-from tunehound.tagging import TaggingError, write_tags
+from tunehound.tagging import TaggingError, image_mime, write_tags
 from tunehound.track import Track
 
 MAX_FILENAME_LENGTH = 200
@@ -42,9 +42,11 @@ def _fetch_cover(url: str | None, get_bytes: Callable[[str], bytes]) -> bytes | 
     if not url:
         return None
     try:
-        return get_bytes(url)
-    except OSError:
+        data = get_bytes(url)
+        image_mime(data)
+    except (OSError, TaggingError):
         return None
+    return data
 
 
 def download_track(
