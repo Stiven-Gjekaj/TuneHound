@@ -109,10 +109,16 @@ Open the terminal user interface:
 
     uv run tunehound tui
 
+The `tui` command takes the same options as `download`, for example
+`-o ~/Music --format flac --lyrics`.
+
 ![The main screen of TuneHound](assets/tui.svg)
 
-Paste a link and press Enter. The screen puts it in the queue. In this
-version the screen does not download yet; use `tunehound download`.
+Paste a link or type a search and press Enter. TuneHound downloads it at
+once, and runs up to three links at the same time. Each row shows the
+progress and then the result. An album or a playlist gets one row for the
+list and one row for each song. The status line counts the rows and shows
+the last error.
 Press `esc` to go to the queue, `/` to go back to the link, and `q` in the
 queue to close the app.
 
