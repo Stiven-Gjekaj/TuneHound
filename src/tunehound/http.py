@@ -1,6 +1,7 @@
 """Get pages and files over HTTP."""
 
 import json
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -30,3 +31,20 @@ def final_url(url: str) -> str:
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
         return response.geturl()
+
+
+def request_json(
+    url: str,
+    headers: dict[str, str] | None = None,
+    form: dict[str, str] | None = None,
+) -> Any:
+    """Send a request and read the answer as JSON.
+
+    With `form`, the request is a POST with a form body. Else it is a GET.
+    """
+    data = urllib.parse.urlencode(form).encode() if form is not None else None
+    request = urllib.request.Request(
+        url, data=data, headers={"User-Agent": USER_AGENT, **(headers or {})}
+    )
+    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        return json.loads(response.read())
