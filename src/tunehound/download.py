@@ -15,6 +15,40 @@ class DownloadError(Exception):
     """Tell that yt-dlp did not make the audio file."""
 
 
+BOT_CHECK_HINT = (
+    "YouTube asks for a sign-in to confirm that this is not a bot. "
+    "Use --cookies-from-browser BROWSER."
+)
+
+
+class _SilentLogger:
+    """Keep yt-dlp from printing. TuneHound reports the errors itself."""
+
+    def debug(self, message: str) -> None:
+        pass
+
+    def info(self, message: str) -> None:
+        pass
+
+    def warning(self, message: str) -> None:
+        pass
+
+    def error(self, message: str) -> None:
+        pass
+
+
+def short_message(text: str) -> str:
+    """Make a yt-dlp error message short enough for one line."""
+    if "Sign in to confirm" in text:
+        return BOT_CHECK_HINT
+    text = text.removeprefix("ERROR: ")
+    if text.startswith("[") and "]: " in text:
+        text = text.split("]: ", 1)[1]
+    elif text.startswith("[") and ": " in text:
+        text = text.split(": ", 1)[1]
+    return text.split(". ", 1)[0].strip()
+
+
 def build_options(
     stem: Path,
     codec: str = DEFAULT_CODEC,
@@ -34,6 +68,7 @@ def build_options(
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
+        "logger": _SilentLogger(),
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -64,7 +99,7 @@ def download_audio(
         with downloader_factory(options) as downloader:
             downloader.download([url])
     except yt_dlp.utils.DownloadError as error:
-        raise DownloadError(str(error)) from error
+        raise DownloadError(short_message(str(error))) from error
     path = stem.with_name(f"{stem.name}.{codec}")
     if not path.is_file():
         raise DownloadError(f"yt-dlp did not make {path}")

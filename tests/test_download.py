@@ -1,7 +1,13 @@
 import pytest
 import yt_dlp
 
-from tunehound.download import DownloadError, build_options, download_audio
+from tunehound.download import (
+    BOT_CHECK_HINT,
+    DownloadError,
+    build_options,
+    download_audio,
+    short_message,
+)
 
 
 class FakeDownloader:
@@ -98,3 +104,26 @@ def test_download_audio_passes_the_browser_to_yt_dlp(tmp_path):
         downloader_factory=factory,
     )
     assert made[0].options["cookiesfrombrowser"] == ("chrome",)
+
+
+def test_short_message_gives_a_hint_for_the_bot_check():
+    text = (
+        "ERROR: [youtube] abc: Sign in to confirm you are not a bot. "
+        "Use --cookies-from-browser or --cookies for the authentication."
+    )
+    assert short_message(text) == BOT_CHECK_HINT
+
+
+def test_short_message_keeps_the_first_sentence_of_other_errors():
+    text = "ERROR: [youtube] abc: Video unavailable. This video is private."
+    assert short_message(text) == "Video unavailable"
+
+
+def test_short_message_keeps_a_plain_message():
+    assert short_message("no audio") == "no audio"
+
+
+def test_build_options_silence_yt_dlp(tmp_path):
+    logger = build_options(tmp_path / "x")["logger"]
+    for level in ("debug", "info", "warning", "error"):
+        assert getattr(logger, level)("text") is None
