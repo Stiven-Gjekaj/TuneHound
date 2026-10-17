@@ -1,6 +1,13 @@
+import json
+
 import pytest
 
-from tunehound.providers.spotify import SpotifyError, parse_track_id
+from tunehound.providers.spotify import (
+    SpotifyError,
+    fetch_track,
+    parse_embed_page,
+    parse_track_id,
+)
 
 TRACK_ID = "4uLU6hMCjMI75M1A2tKUQC"
 
@@ -35,3 +42,85 @@ def test_parse_track_id_accepts_track_links(link):
 def test_parse_track_id_refuses_other_links(link):
     with pytest.raises(SpotifyError):
         parse_track_id(link)
+
+
+def make_entity(**changes):
+    entity = {
+        "type": "track",
+        "name": "A Song",
+        "artists": [{"name": "First"}, {"name": "Second"}],
+        "duration": 213573,
+        "isExplicit": True,
+        "releaseDate": {"isoString": "1987-11-12T00:00:00Z"},
+        "visualIdentity": {
+            "image": [
+                {"url": "https://img.invalid/300", "maxWidth": 300},
+                {"url": "https://img.invalid/640", "maxWidth": 640},
+                {"url": "https://img.invalid/64", "maxWidth": 64},
+            ]
+        },
+    }
+    entity.update(changes)
+    return entity
+
+
+def make_page(entity):
+    data = {"props": {"pageProps": {"state": {"data": {"entity": entity}}}}}
+    return (
+        "<html><body>"
+        '<script id="__NEXT_DATA__" type="application/json">'
+        f"{json.dumps(data)}"
+        "</script></body></html>"
+    )
+
+
+def test_parse_embed_page_reads_the_metadata():
+    track = parse_embed_page(make_page(make_entity()), TRACK_ID)
+    assert track.title == "A Song"
+    assert track.artists == ("First", "Second")
+    assert track.duration_ms == 213573
+    assert track.release_date == "1987-11-12"
+    assert track.explicit is True
+    assert track.source_url == f"https://open.spotify.com/track/{TRACK_ID}"
+
+
+def test_parse_embed_page_takes_the_largest_cover():
+    track = parse_embed_page(make_page(make_entity()), TRACK_ID)
+    assert track.cover_url == "https://img.invalid/640"
+
+
+def test_parse_embed_page_accepts_missing_optional_fields():
+    entity = make_entity()
+    del entity["releaseDate"], entity["visualIdentity"], entity["isExplicit"]
+    track = parse_embed_page(make_page(entity), TRACK_ID)
+    assert track.release_date is None
+    assert track.cover_url is None
+    assert track.explicit is False
+
+
+@pytest.mark.parametrize(
+    "page",
+    [
+        "<html>no data</html>",
+        '<script id="__NEXT_DATA__" type="application/json">{bad</script>',
+        '<script id="__NEXT_DATA__" type="application/json">{}</script>',
+        make_page(make_entity(type="episode")),
+        make_page(make_entity(artists=[])),
+        make_page(make_entity(name="")),
+    ],
+)
+def test_parse_embed_page_refuses_a_bad_page(page):
+    with pytest.raises(SpotifyError):
+        parse_embed_page(page, TRACK_ID)
+
+
+def test_fetch_track_reads_the_embed_page_of_the_link():
+    asked = []
+
+    def get_text(url):
+        asked.append(url)
+        return make_page(make_entity())
+
+    track = fetch_track(f"https://open.spotify.com/track/{TRACK_ID}?si=x", get_text)
+    assert asked == [f"https://open.spotify.com/embed/track/{TRACK_ID}"]
+    assert track.title == "A Song"
