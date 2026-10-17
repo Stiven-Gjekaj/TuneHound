@@ -108,16 +108,25 @@ Screen {
     color: $th-cyan;
 }
 
+/* Textual draws each binding as a FooterKey widget. */
 Footer {
     background: $th-panel-2;
+}
+
+FooterKey {
+    background: $th-panel-2;
+    color: $th-pale;
+}
+
+FooterKey .footer-key--key {
+    color: $th-cyan;
+    text-style: bold;
+}
+
+FooterKey .footer-key--description {
     color: $th-dim;
 }
 
-Footer > .footer--key {
+FooterKey:hover {
     background: $th-border;
-    color: $th-cyan;
-}
-
-Footer > .footer--description {
-    color: $th-pale;
 }
