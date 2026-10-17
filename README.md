@@ -63,7 +63,16 @@ Download one song from a Spotify link into the current folder:
 
     uv run tunehound download https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC
 
-Put the file in a different folder:
+Download every song of an album or a playlist:
+
+    uv run tunehound download https://open.spotify.com/album/6eUW0wxWtzkFdaEFsTJto6
+
+TuneHound prints one line for each song and a summary at the end. A song
+that fails does not stop the other songs. When the file of a song is already
+in the folder, TuneHound skips the song, so you can run the same command
+again to get the songs that failed.
+
+Put the files in a different folder:
 
     uv run tunehound download LINK -o ~/Music
 
@@ -89,10 +98,14 @@ queue to close the app.
 
 ## What works now
 
-- Providers: Spotify track links. Albums, playlists, and other providers
-  come later.
+- Providers: Spotify track, album, and playlist links. Other providers come
+  later.
+- Lists: the Spotify embed page gave 100 songs at most for a playlist in a
+  test. TuneHound warns when a list has 100 songs, because songs can be
+  missing.
 - Tags: the title, the artists, the release date, the cover, and the link of
-  the source. The Spotify embed page does not give the album or the ISRC.
+  the source. A song from an album link also gets the album and the track
+  number. The Spotify embed page does not give the ISRC.
 - Format: mp3.
 - Match: TuneHound searches YouTube and scores each result by the title, the
   artist, the length, and the channel. It refuses a live version, a remix, or
