@@ -26,10 +26,11 @@ _Paste a link. TuneHound finds the song, downloads it, and tags it._
 ---
 
 > [!NOTE]
-> **Version 0.4.0 is out.**
+> **Version 0.5.0 is out.**
 > It downloads songs, albums, and playlists from Spotify, Deezer, Apple
 > Music, YouTube, SoundCloud, and Bandcamp links, or from a search text, as
-> mp3, m4a, opus, or flac, with full tags and lyrics on request.
+> mp3, m4a, opus, or flac, with full tags and lyrics on request. The
+> terminal user interface downloads too.
 > [Install](#install) says how to get it, and
 > [the roadmap](docs/roadmap.md) says what comes next.
 
@@ -53,7 +54,7 @@ TuneHound does not decrypt DRM streams.
 
 ## Install
 
-    uv tool install git+https://github.com/Stiven-Gjekaj/TuneHound@v0.4.0
+    uv tool install git+https://github.com/Stiven-Gjekaj/TuneHound@v0.5.0
 
 Then run `tunehound` with no `uv run` in front.
 
