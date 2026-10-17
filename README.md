@@ -140,6 +140,33 @@ Windows it is `%APPDATA%\tunehound\config.toml`. The environment variable
 
 Use `--no-lyrics` to turn off the lyrics of the file for one command.
 
+### Spotify keys for full playlists
+
+Without keys, TuneHound reads the Spotify embed page. That page gives at
+most 100 songs of a playlist. With the keys of a Spotify developer app,
+TuneHound reads the Spotify Web API, which gives every song of a public
+playlist or album, and full tags with the album, the track and disc
+numbers, and the ISRC.
+
+1. Sign in at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
+   and make an app. Any name and any redirect URI work, for example
+   `http://127.0.0.1:8080/callback`. Select "Web API".
+2. Open the settings of the app, and copy the client ID and the client
+   secret.
+3. Put them in the configuration file:
+
+       spotify_client_id = "your client ID"
+       spotify_client_secret = "your client secret"
+
+   Or set the environment variables `TUNEHOUND_SPOTIFY_CLIENT_ID` and
+   `TUNEHOUND_SPOTIFY_CLIENT_SECRET`.
+4. Run `tunehound config`. It says "Spotify: the Web API" when it found
+   both keys.
+
+The keys see public playlists only. Since late 2024, Spotify does not give
+the playlists that it makes itself, for example "Today's Top Hits", to new
+apps. For those, remove the keys, and TuneHound uses the embed page again.
+
 ## What works now
 
 | Link | Track | Album | Playlist | Match step |
@@ -157,9 +184,11 @@ Use `--no-lyrics` to turn off the lyrics of the file for one command.
   provider gives them. When a Spotify or Apple Music track has no album or
   ISRC, TuneHound fills them from Deezer, but only from a Deezer result with
   the same release date. Lyrics come from lrclib.net with `--lyrics`.
-- Lists: the Spotify embed page gave 100 songs at most for a playlist in a
-  test. TuneHound warns when a Spotify playlist has 100 songs, because songs
-  can be missing.
+- Lists: without Spotify keys, the Spotify embed page gives 100 songs at
+  most of a playlist. A test playlist had 1596 songs, and the page gave 100.
+  TuneHound warns when a Spotify playlist has 100 songs. With
+  [Spotify keys](#spotify-keys-for-full-playlists), TuneHound reads every
+  song.
 - Formats: mp3, m4a, opus, and flac.
 - Match: TuneHound searches YouTube and scores each result by the title, the
   artist, the length, and the channel. It refuses a live version, a remix, or
