@@ -7,6 +7,26 @@ number, and a change that breaks the command line or the file names raises
 the major number.
 Each release on GitHub has the wheel and the source archive as assets.
 
+## 1.1.0 (2026-10-17)
+
+Full Spotify playlists.
+
+- `--input FILE` reads one link or search text from each line of a text
+  file. Empty lines and lines that start with `#` do not count. A line that
+  fails does not stop the other lines. Copy the track links of a playlist
+  from the Spotify desktop app into a file to get a playlist of more than
+  100 songs with no keys.
+- With the client ID and the client secret of a Spotify developer app,
+  TuneHound reads the Spotify Web API. It gives every song of a public
+  playlist or album, page by page, and the album, the track and disc
+  numbers, and the ISRC of each song. Put the keys in the configuration file
+  or in `TUNEHOUND_SPOTIFY_CLIENT_ID` and `TUNEHOUND_SPOTIFY_CLIENT_SECRET`.
+  `tunehound config` says which way TuneHound reads Spotify, and it hides
+  the secret. This code has unit tests, but it has not run against the live
+  Spotify API, because no keys were available for a test.
+- Each song line prints at once, so the lines keep their order when the
+  output goes to a file or a pipe.
+
 ## 1.0.0 (2026-10-17)
 
 The first full release. TuneHound is a command line tool only.
