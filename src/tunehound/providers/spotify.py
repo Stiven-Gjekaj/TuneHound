@@ -7,16 +7,18 @@ account and no API key. It does not give the album or the ISRC.
 import json
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from tunehound import http
 from tunehound.track import Track
 
 _ID = r"[0-9A-Za-z]{22}"
+_KIND = r"(?P<kind>track|album|playlist)"
 _URL_PATTERN = re.compile(
     rf"^https?://open\.spotify\.com/(?:intl-[a-z]{{2}}(?:-[a-z]{{2}})?/)?"
-    rf"(?:embed/)?track/(?P<id>{_ID})(?:[/?#].*)?$"
+    rf"(?:embed/)?{_KIND}/(?P<id>{_ID})(?:[/?#].*)?$"
 )
-_URI_PATTERN = re.compile(rf"^spotify:track:(?P<id>{_ID})$")
+_URI_PATTERN = re.compile(rf"^spotify:{_KIND}:(?P<id>{_ID})$")
 _NEXT_DATA = re.compile(
     r'<script id="__NEXT_DATA__" type="application/json">(?P<json>.*?)</script>',
     re.DOTALL,
@@ -29,14 +31,30 @@ class SpotifyError(Exception):
     """Tell that a Spotify link or page is not usable."""
 
 
-def parse_track_id(link: str) -> str:
-    """Return the track ID in a Spotify link or URI."""
+@dataclass(frozen=True)
+class SpotifyLink:
+    """Hold the kind and the ID of a Spotify link."""
+
+    kind: str
+    id: str
+
+
+def parse_link(link: str) -> SpotifyLink:
+    """Return the kind and the ID of a Spotify track, album, or playlist link."""
     link = link.strip()
     for pattern in (_URL_PATTERN, _URI_PATTERN):
         match = pattern.match(link)
         if match:
-            return match.group("id")
-    raise SpotifyError(f"not a Spotify track link: {link}")
+            return SpotifyLink(kind=match.group("kind"), id=match.group("id"))
+    raise SpotifyError(f"not a Spotify link: {link}")
+
+
+def parse_track_id(link: str) -> str:
+    """Return the track ID in a Spotify link or URI."""
+    parsed = parse_link(link)
+    if parsed.kind != "track":
+        raise SpotifyError(f"not a Spotify track link: {link.strip()}")
+    return parsed.id
 
 
 def parse_embed_page(page: str, track_id: str) -> Track:

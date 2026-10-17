@@ -4,8 +4,10 @@ import pytest
 
 from tunehound.providers.spotify import (
     SpotifyError,
+    SpotifyLink,
     fetch_track,
     parse_embed_page,
+    parse_link,
     parse_track_id,
 )
 
@@ -26,6 +28,34 @@ TRACK_ID = "4uLU6hMCjMI75M1A2tKUQC"
 )
 def test_parse_track_id_accepts_track_links(link):
     assert parse_track_id(link) == TRACK_ID
+
+
+@pytest.mark.parametrize(
+    ("link", "kind"),
+    [
+        (f"https://open.spotify.com/track/{TRACK_ID}", "track"),
+        (f"https://open.spotify.com/intl-fr/album/{TRACK_ID}?si=1", "album"),
+        (f"https://open.spotify.com/embed/playlist/{TRACK_ID}", "playlist"),
+        (f"spotify:album:{TRACK_ID}", "album"),
+        (f"spotify:playlist:{TRACK_ID}", "playlist"),
+    ],
+)
+def test_parse_link_gives_the_kind_and_the_id(link, kind):
+    assert parse_link(link) == SpotifyLink(kind=kind, id=TRACK_ID)
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        f"https://open.spotify.com/artist/{TRACK_ID}",
+        f"spotify:episode:{TRACK_ID}",
+        "https://open.spotify.com/album/short",
+        "",
+    ],
+)
+def test_parse_link_refuses_other_links(link):
+    with pytest.raises(SpotifyError):
+        parse_link(link)
 
 
 @pytest.mark.parametrize(

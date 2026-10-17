@@ -86,4 +86,4 @@ def test_download_command_reports_an_error(monkeypatch, capsys):
 
 def test_download_command_refuses_a_bad_link(capsys):
     assert main(["download", "https://example.com/not-spotify"]) == 1
-    assert "not a Spotify track link" in capsys.readouterr().err
+    assert "not a Spotify link" in capsys.readouterr().err
